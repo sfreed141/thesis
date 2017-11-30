@@ -1,0 +1,18 @@
+\chapter{Validation}
+
+\section{Expected Results}
+The primary deliverable of this work is a real-time global illumination algorithm. Naturally, the two primary measures of success for this will be the execution time and the visual quality. Execution time is simple to evaluate: the execution time required for the algorithm as well as the frame time for the entire program can be timed. This will provide a good way of comparing this global illumination method to others. It also provides a way to measure how the algorithm scales with various parameters such as screen resolution and geometric complexity. Visual quality is difficult to objectively define, so simple comparisons to other methods is preferable. There are a few visual qualities that are a requirement for the algorithm: ambient occlusion, color bleeding, specular reflections, and little to no light leaking. These specific qualities can be used as a rough indicator of how well the global illumination algorithm performs.
+
+\section{Methodology}
+The first part of the validation plan will be to create multiple test scenes that will showcase the desired properties of the algorithm. The test scenes chosen will be
+
+\begin{enumerate}
+\item[Sponza: ] This scene is a de facto standard environment of moderate geometric complexity. There are multiple areas that showcase interesting lighting as well as specular reflections, color bleeding, and light leaking.
+\item[San Miguel: ] Another popular scene used to showcase new lighting algorithms.
+\item[Light Leak Test: ] This custom test scene is designed to exhibit light leaking and will be a good indicator of how well our algorithm addresses that issue.
+\end{enumerate}
+
+Comparisons between no global illumination, our algorithm, and NVIDIA's VXGI will be shown and analyzed for the given scenes.
+
+In terms of evaluating the algorithm by itself, we can examine how changing screen resolution, geometric complexity, number of lights, and voxelization dimension will affect the algorithm. 
+
