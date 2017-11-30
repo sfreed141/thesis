@@ -1,8 +1,15 @@
 \chapter{Background}
 
 \section{Voxelization}
+To develop an interactive 3D application, some kind of representation for the scene is needed. Traditionally, all geometric objects in a scene are represented by triangles. For example, to model a simple cube we can represent each of its faces using two triangles for a total of 12 triangles. The reason for using triangles is due to their geometric simplicity (triangles contain the fewest number of points that define a plane). Also, as dedicated Graphics Processing Units (GPUs) became more common they were designed with this traditional triangle rasterization in mind so they have specialized hardware to operate on triangles. In other words, triangles are fast to process.
 
-\section{Global Illumination}
+But triangles do have some issues. Primarily, they do a good job of referencing surfaces (since they are inherently 2D) but they don't lend themselves well to volumetric (3D) data. For example, a natural representation of a cloud would be a 3D volume representing the density of the cloud at a given point within the volume. There are algorithms that can convert from a volumetric representation to a triangle one---marching cubes being the most popular \todo{cite!}---but it still only models an arbitrary isosurface as opposed to the actual volume.
+
+Voxels (volume elements) represent 3D objects in a natural way. A volumetric representation of an object is a 3D grid of cells (the voxels) which hold any data relevant to that voxel: color, transparency, and normal, to name a few. Recently, voxels have grown popular in the computer graphics field due to this natural representation of 3D objects. The main reason voxels were not used much in the past is mainly due to the amount of memory required to store a voxelized representation as well as GPUs being specialized for triangle rasterization (and not being easy for more general purpose computing). This restriction has largely been lifted since modern GPUs have much more memory and general purpose GPU (GPGPU) computing has allowed programmers to work more easily with non-triangle based computing.
+
+\section{Shading}
+\subsection{Radiance and the Rendering Equation}
+\subsection{Global Illumination}
 
 \section{Related Work}
 
