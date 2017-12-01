@@ -2,9 +2,9 @@
 
 \section{Representing Geometry}
 \subsection{Triangles}
-To develop an interactive 3D application, some kind of representation for the scene is needed. Traditionally, all geometric objects in a scene are represented by triangles. For example, to model a simple cube we can represent each of its faces using two triangles for a total of 12 triangles. The reason for using triangles is due to their geometric simplicity (triangles contain the fewest number of points that define a plane). Also, as dedicated Graphics Processing Units (GPUs) became more common they were designed with this traditional triangle rasterization in mind so they have specialized hardware to operate on triangles. In other words, triangles are fast to process.
+To develop an interactive 3D application a scene representation is needed. Traditionally, all geometric objects in a scene are represented by triangles. For example, to model a simple cube we can represent each of its faces using two triangles for a total of 12 triangles. The reason for using triangles is due to their geometric simplicity (triangles contain the fewest number of points that define a plane). Also, as dedicated Graphics Processing Units (GPUs) became more common they were designed with this traditional triangle rasterization in mind so they have specialized hardware to operate on triangles. In other words, triangles are fast to process.
 
-But triangles do have some issues. Primarily, they do a good job of representing surfaces (since they are inherently 2D) but they don't lend themselves well to volumetric (3D) data. For example, a natural representation of a cloud would be a 3D volume filled with the density of the cloud at a given point within the volume. There are algorithms that can convert from a volumetric representation to a triangle one---marching cubes being the most popular---but it still only models an arbitrary isosurface as opposed to the actual volume.
+But triangles do have some issues. Primarily, they do a good job of representing surfaces (since they are inherently 2D) but they don't lend themselves well to volumetric (3D) data. For example, a natural representation of a cloud would be a 3D volume filled with the density of the cloud at a given point within the volume. There are algorithms that can convert from a volumetric representation to a triangle one---marching cubes~\cite{lorensen1987marching} being the most popular---but it still only models an arbitrary isosurface as opposed to the actual volume.
 
 \subsection{Voxels}
 Voxels (volume elements) represent 3D objects in a natural way. A volumetric representation of an object is a 3D grid of cells (the voxels) which hold any data relevant to that voxel: color, transparency, and normal, to name a few. Recently, voxels have grown popular in the computer graphics field due to this natural representation of 3D objects. The main reason voxels were not used much in the past is due to the amount of memory required to store a voxelized representation as well as GPUs being specialized for triangle rasterization. This restriction has largely been lifted since modern GPUs have much more memory and general purpose GPU (GPGPU) computing has allowed programmers to work more easily with non-triangle based computing.
@@ -16,8 +16,34 @@ Voxels (volume elements) represent 3D objects in a natural way. A volumetric rep
 \label{fig:bunnyvoxel}
 \end{figure}
 
+\section{Spatial Data Structures}
+Many algorithms in computer graphics require a way to query particular aspects about a particular point or object in space. These queries could be something like ``which side of a plane is this object on'' or, more relevant to our work, ``how much light is present at this point''. Of course, this data could be stored in a simple array but oftentimes this leads to poor runtime performance. Using a more advanced data structure to represent spatial data is crucial to achieving real-time rendering performance. We briefly describe some common data structures relevant to our work.
+
+\subsection{3D Textures}
+One of the simplest approaches to storing spatial data is to simply define a mapping from 3D space into a 3D texture, essentially a cube. While this is straightforward to visualize and is easy to work with, 3D textures require a large amount of memory. If the data to be stored is sparse (i.e.\ most positions in space do not have a corresponding value) this memory is wasted. Also, GPUs are able to take advantage of spatial coherency in 3D textures and can provide fast caching and filtering of the data.
+
+\subsection{Clipmaps}
+In a 3D texture, we essentially have a uniform grid of values: the resolution, or level of detail, of data remains constant throughout the entire texture. With many types of data, we don't need the same resolution---for example, in many applications, the farther away from the viewer we are the less detail we need. A clipmap~\cite{Tanner:1998:CVM:280814.280855, Losasso:2004:GCT:1186562.1015799} is based on this concept and represents 3D space using differing levels of detail. The resolution at each level of detail is halved, reducing the amount of memory needed to represent the same 3D space as an equivalent 3D texture. The issue with sparse memory still exists, but it is alleviated greatly.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=1.0]{geometry_clipmap.jpg}
+\caption{Example of clipmaps applied to terrain. Notice that the inner levels have higher detail while each successive outer level lowers the detail level by a factor of 2 (image from~\cite{Losasso:2004:GCT:1186562.1015799}).}
+\label{fig:geometryclipmaps}
+\end{figure}
+
+\subsection{Octrees}
+Another way of representing 3D space can be done using a tree structure. An octree~\cite{Cra12, meagher1982geometric} is a tree where each child node is an octant of its parent (see Figure~\ref{fig:octree}). This representation is very efficient memory wise when it comes to sparse data since there is no requirement the tree has to be full: if there is no data in an octant, we can leave it childless. The tradeoff, however, is we have to recurse through the octree for every query. This can be difficult to do on the GPU and it loses the hardware supported caching and filtering provided to 3D textures.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.25]{octree.png}
+\caption{Diagram of a simple octree (image from \textit{https://en.wikipedia.org/wiki/Octree}).}
+\label{fig:octree}
+\end{figure}
+
 \section{Radiance and the Rendering Equation}
-In order to render a scene, we need some model of how light works. A physically accurate way to model light is with the concept of radiance. Radiance can be thought of as the radiant flux (the amount of light energy transferred per unit time) through some unit area. In other words, it is how much light is present at a given point and in which direction it is travelling. Spectral radiance is the same thing but incorporates the wavelength of the light as well. The rendering equation, which describes the radiance at a given point in space, was originally presented by Kajiya \cite{kajiya1986rendering}. The equation, with slightly more modern notation, is
+In order to render a scene we need some model of how light works. A physically accurate way to model light is with the concept of radiance. Radiance can be thought of as the radiant flux (the amount of light energy transferred per unit time) through some unit area. In other words, it is how much light is present at a given point and in which direction it is travelling. Spectral radiance is the same thing but incorporates the wavelength of the light as well. The rendering equation, which describes the radiance at a given point in space, was originally presented by Kajiya \cite{kajiya1986rendering}. The equation, with slightly more modern notation, is
 \begin{equation*}
     L_o(\bm{x}, \omega_o, \lambda, t) = L_e(\bm{x}, \omega_o, \lambda, t) + \int_\Omega f_r(\bm{x}, \omega_i, \omega_o, \lambda, t)\ L_i(\bm{x}, \omega_i, \lambda, t)\ (\omega_i \cdot \bm{n})\ d\omega_i
 \end{equation*}
@@ -34,9 +60,9 @@ where $\bm{x}$ is a point in space, $\omega_o$ is the direction of outgoing ligh
 Of course, in order to compute this we must at the very least discretize the problem. Furthermore, the complexity involved in calculating all of the integrals that would be needed to render a full scene as stated by the rendering equation is computationally infeasible. Thus we need some way to approximate this complete model of light.
 
 \section{Global Illumination}
-To approximate the rendering equation, first it is helpful to divide light into two categories: direct and indirect light. Direct light for a point is calculated by iterating through all light sources in a scene and computing their contribution to the point. This is relatively easy and straightforward. Indirect lighting for a point is the light accumulated from non-light sources in the scene, like the ambient light that is bounced off of other surfaces.
+To approximate the rendering equation it is helpful to divide light into two categories: direct and indirect light. Direct light for a point is calculated by iterating through all light sources in a scene and computing their contribution to the point. This is relatively easy and straightforward. Indirect lighting for a point is the light accumulated from non-light sources in the scene, like the ambient light that is bounced off of other surfaces.
 
-The term global illumination generally refers to a lighting model which attempts to accurately approximate indirect illumination. Approaches like having a constant ambient light amount and using ambient occlusion techniques like SSAO and HBAO do try to emulate some of the effects of indirect light but do not really attempt to accomplish full global illumination. For our algorithm, some of the main visual qualities we consider necessary are color bleeding, specular reflections, and limited light leaking (see Figure~\ref{fig:giqualities}). Here we give an overview of some techniques used to achieve more accurate global illumination.
+The term global illumination generally refers to a lighting model which attempts to accurately approximate indirect illumination. Approaches like having a constant ambient light amount (as is done in the classic Phong~\cite{phong1975illumination} lighting model) and using ambient occlusion techniques like SSAO and HBAO do try to emulate some of the effects of indirect light but do not really attempt to accomplish full global illumination. For our algorithm, some of the main visual qualities we consider necessary are color bleeding, specular reflections, and limited light leaking (see Figure~\ref{fig:giqualities}). Here we give an overview of some techniques used to achieve more accurate global illumination.
 
 \begin{figure}[h]
 \centering
@@ -59,8 +85,6 @@ Raytracing is a common rendering technique which involves casting rays into a sc
 Another approach to global illumination is to approximate the radiance in a scene using some spatial representation. Then, when computing the lighting the radiance can be looked up and used to achieve global illumination. Baked lighting follows this approach by pre-processing a scene's geometry and light sources in order to compute the radiance in a scene. During run time, the radiance can be looked up quickly. The clear and major drawback of this method is it is completely static: if a light moves the radiance map created is no longer valid. Still, it is a great way to enhance visual quality when working with static lights.
 
 \subsection{Voxel Cone Tracing}
-The focus of much research, as well as this thesis, is on computing real-time global illumination with support for dynamic objects and lighting. Voxel cone tracing~\cite{crassin2011interactive} is relatively recent method for computing this that has gained some popularity, with variations being implemented by NVIDIA~\cite{nvidiavxgi} (which is incorporated into the Unreal Engine) and some games~\cite{mclaren2016cascaded}.
+The focus of much research, as well as this thesis, is on computing real-time global illumination with support for dynamic objects and lighting. Voxel cone tracing~\cite{crassin2011interactive} is a relatively recent method for computing this that has gained some popularity, with variations being implemented by NVIDIA~\cite{nvidiavxgi} (which is incorporated into the Unreal Engine) and some games~\cite{mclaren2016cascaded}.
 
-The general voxel cone tracing algorithm relies on approximating the scene's radiance using a voxelized spatial data structure, which then upscales (filters) the radiance in order to obtain adequate performance. To perform the actual lighting calculation, the radiance is sampled from the spatial data structure in such a way to minimize the amount of sampling without sacrificing quality. 
-
-
+The general voxel cone tracing algorithm relies on approximating the scene's radiance using a voxelized spatial data structure, which then upscales (filters) the radiance in order to obtain adequate performance. To perform the actual lighting calculation, the radiance is sampled from the spatial data structure in such a way to minimize the amount of sampling without sacrificing quality. More details on the basic voxel cone tracing algorithm will be provided in the Implementation chapter.
