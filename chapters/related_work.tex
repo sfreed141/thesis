@@ -1,0 +1,27 @@
+\chapter{Related Work}
+
+Global illumination is a broad term that can be approached in many ways. With respect to this thesis, we only focus on comparisons with other real-time, fully dynamic techniques are used.
+
+* Global Illumination using Voxel Cone Tracing
+    - octrees vs clipmaps vs 3d textures (vs warped)
+    - proprietary
+    - vxgi: clipmaps, in UE4 but still closed source
+    - octree -> no hw filtering, complex but higher resolution
+    - multiple levels of radiance -> allows gathering more high frequency indirect lighting information
+
+* Light Propogation Volumes
+    - in cryengine (closed source (check that); difficult to understand within context of engine)
+    - somewhat like vct but only one level of detail is stored (filtered completely)
+        - low frequency only (no specular)
+        - can't be used for other purposes like occlusion
+    - no voxelization (no geometric information)
+    - no cone tracing needed (just samples texture directly)
+
+* from GPU Pro 4
+    - VPL injection using instanced quads (instead of RSMs) -> not as accurate but faster
+
+* some common issues with other works (this could also go in intro)
+    - closed source
+        - implementation details matter -> difficult to understand from research or white papers
+        - highly variable performance based on unrelated things (OpenGL vs DirectX? modern OpenGL? mipmaps, normal maps, shading model, mesh optimizations, etc)
+    - research renderers or full game engines -> difficult to understand

@@ -12,7 +12,7 @@ Voxels (volume elements) represent 3D objects in a natural way. A volumetric rep
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.5]{bunny_voxel.png}
-\caption{Voxelized representation of a bunny (image from \textit{http://cse.iitkgp.ac.in/\textasciitilde pb}).}
+\caption{Voxelized representation of a bunny (image from \url{http://cse.iitkgp.ac.in/\textasciitilde pb}).}
 \label{fig:bunnyvoxel}
 \end{figure}
 
@@ -38,7 +38,7 @@ Another way of representing 3D space can be done using a tree structure. An octr
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.25]{octree.png}
-\caption{Diagram of a simple octree (image from \textit{https://en.wikipedia.org/wiki/Octree}).}
+\caption{Diagram of a simple octree (image from \url{https://en.wikipedia.org/wiki/Octree}).}
 \label{fig:octree}
 \end{figure}
 
@@ -53,7 +53,7 @@ where $\bm{x}$ is a point in space, $\omega_o$ is the direction of outgoing ligh
 \begin{figure}[h]
 \centering
 \includegraphics[scale=1.0]{rendering_eq.png}
-\caption{Diagram representing the components of the rendering equation (image from \textit{https://en.wikipedia.org/wiki/Rendering\_equation}).}
+\caption{Diagram representing the components of the rendering equation (image from \url{https://en.wikipedia.org/wiki/Rendering\_equation}).}
 \label{fig:renderingeq}
 \end{figure}
 
@@ -71,13 +71,14 @@ The term global illumination generally refers to a lighting model which attempts
 \label{fig:giqualities}
 \end{figure}
 
+% TODO raytracing and static lighting methods should probably be cut from background (not focus of this thesis, explain in intro)
 \subsection{Monte Carlo Raytracing}
 Raytracing is a common rendering technique which involves casting rays into a scene and determining color based on where the rays intersect. When a ray hits some geometry, direct lighting can be calculated by seeing if a ray from a light can `see' the intersection point. For indirect lighting, more work must be done. Monte Carlo Raytracing approximates the indirect light at a point by directly trying to approximate the surface integral over a hemisphere (as done in the rendering equation). This is done by only sending out a finite number of sampling rays to keep computation of the surface integral reasonable. The results, while impressive, still do not lend themselves well to real-time applications. Even with variations and improvements on the idea of raytracing, such as photon mapping, interactive frame rates are not achieved. 
 
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.5]{sampling.png}
-\caption{Sampling rays used to approximate an integral as would be done using Monte Carlo integration (image from \textit{https://computergraphics.stackexchange.com/questions/4979}).}
+\caption{Sampling rays used to approximate an integral as would be done using Monte Carlo integration (image from \url{https://computergraphics.stackexchange.com/questions/4979}).}
 \label{fig:sampling}
 \end{figure}
 
