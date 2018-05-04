@@ -19,12 +19,60 @@ One of the main challenges with voxelization is ensuring there are no holes or c
 
 % TODO go through shaders. NV_conservative_raster, MSAA based
 
+% TODO code snippets, actual OpenGL names
 \section{Shadow Mapping}
+Shadow mapping is a well known technique used for efficiently creating shadows. We will also use the resulting shadow map for radiance injection.
+
+To generate a shadow map for a light, we render the scene from the light's perspective and gather the depth values of the fragments. Since we need the GPU to write to an arbitrary texture (the shadowmap), we create a framebuffer object (FBO) and attach the texture as a depth attachment. The FBO does not require any color attachments, as we are only interested in the depth. The matrix used to transform vertices from world space to light space is an orthographic projection matrix multiplied with a view matrix generated from the light. Since the GPU will automatically write depth values, the fragment shader can be completely empty. The resulting shadow map, which only contains floating point depth values (in the range [0, 1]), represents the distance of each point visible to the light to the light itself.
 
 \section{Radiance Injection}
+In this render pass, we need to fill a 3D texture (called the radiance texture) with our `VPLs'. The VPLs represent the light being bounced off of geometry within the scene. The points at which this happens are precisely where the light hits the geometry, which is stored in the shadowmap. Therefore, this pass involves taking all points in the shadowmap and projecting the color of the corresponding geometry into the radiance texture.
+
+The most straightforward way to accomplish this is to use a compute shader and launch one thread for each pixel in the shadowmap. Each thread will read the depth value at its respective pixel, project it from light space to world space, look up the corresponding color value in the voxel texture, and finally write it into the radiance texture.
+
+% TODO temporal filtering?
 
 \section{Radiance Filtering}
 
 \section{Shading}
+% TODO do i need to show code/go step by step here?
+The final shading step takes all of the previously generated information (voxel texture, filtered radiance texture, shadowmaps) and renders the scene. Direct lighting is computed from multiple lights and uses the simple Blinn-Phong shading model. Indirect lighting is computed using voxel cone tracing.
 
-\subsection{Voxel Cone Tracing}
+\subsection{Direct Lighting}
+We calculate direct lighting by iterating over each light source in the scene and summing all lighting contributions. We compute diffuse and specular lighting as follows:
+diffuse: material.diffuseColor * light.color * max(0, dot(N, L))
+specular: material.specularColor * light.color * pow(max(0, dot(H, L)), shininess)
+
+
+% TODO definitely gonna want some pictures
+% TODO present integral as going backwards? (want integral -> inf many rays -> break into discrete chunks w/ weights)
+\subsection{Indirect Lighting (Voxel Cone Tracing)}
+To compute the indirect lighting at a given point, we perform the voxel cone tracing step. Recall that to compute indirect light we are effectively approximating a surface integral over a hemisphere. To do this perfectly would require infinitely many cones. Instead, we use six cones: five for diffuse light and one for a specular highlight.
+
+% TODO multiple cones + directions, weights and math supporting it
+% TODO FILL IN APERTURE (from vct settings) AND ANGLE
+% TODO Gaussian distribution for cone weights
+For the diffuse cones we chose an aperture of $xx\degree$s with one oriented in the direction of the surface normal and the others evenly distributed around the normal and tilted up at an angle of $xx\degree$s. We also assign weights to each cone based on a uniform distribution. Note that in order to compute the orientation of each cone in world space we must multiply the chosen cone directions by the TBN matrix.
+
+% TODO use Simon's value to determine aperture?
+% TODO make sure to define these somewhere
+The specular cone is oriented in the direction of the reflection vector, which is calculated as $-V - 2 * dot(N, -V) * N$. The aperture is derived from the material's shininess according to the following formula: $TODO$.
+
+% TODO place this somewhere...
+The radiance texture is sampled at varying levels of detail in order to approximate the amount of indirect light at that point. At it's core, voxel cone tracing is the combination of two fairly simple ideas: raymarching and mipmapping.
+
+Raymarching is a well-known technique that involves sampling values along a ray at regular intervals, or steps. The result of a single raymarch is the accumulation of sampled values along the ray and is often blended based on opacity. The raymarching itself continues until either a set number of steps is calculated or when the accumulated opacity becomes close to 1.
+
+Mipmapping involves keeping multiple detail levels of the same source data. The base level is the highest resolution available and each successive level is downscaled. While this does require increased memory usage, it drastically increases performance as it improves GPU cache locality. For voxel cone tracing, the filtered radiance texture is the mipmapped texture.
+
+% TODO  add math n shit yo
+Therefore, voxel cone tracing is simply raymarching through a mipmapped texture. In order to determine which miplevel to sample from, the idea of cone tracing is introduced. Instead of having a simple ray, we imagine a cone with a particular aperture (angle). Then, the height of the cone is analagous to a ray's length and the size (diameter) of the cone's base grows as the height increases. We can then map the diameter to a level of detail.
+
+Combining this all together, we sample from the radiance texture at a level of detail related to the height of the cone at our sampling point. In this way, samples close to the start of the cone come from higher detailed data and samples far from the start come from lower detailed data. This allows the voxel cone tracing to gather both high frequency and low frequency details of the indirect light.
+
+\section{Voxel Warping}
+% TODO deriving spline, why need constraints, increasing viewport resolution
+
+% TODO do i need this?
+\section{Depth Prepass}
+With voxel cone tracing, each fragment shader invocation is quite expensive. If we have overlapping objects in the scene then fragments will be shaded for each pixel, but only one will be the final color. To ensure we only shade the final fragment, we rasterize the scene and only write the depth value (similar to shadow mapping). This operation is extremely quick. Now, the depth buffer contains only the depth of the fragment that will end up on the screen. When the full shading pass is performed all fragments that fail the depth test can be immediately discarded, avoiding the expensive voxel cone tracing.
