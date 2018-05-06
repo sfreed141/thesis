@@ -16,11 +16,16 @@ Voxels (volume elements) represent 3D objects in a natural way. A volumetric rep
 \label{fig:bunnyvoxel}
 \end{figure}
 
+\section{The Graphics Pipeline}
+% TODO basics, focus on rasterization, overview of shaders (especially compute shader), transforms
+
+% TODO section on basic graphics stuff like mipmapping, shadow mapping, normal mapping, transforms
+
 \section{Spatial Data Structures}
 Many algorithms in computer graphics require a way to query particular aspects about a particular point or object in space. These queries could be something like ``which side of a plane is this object on'' or, more relevant to our work, ``how much light is present at this point''. Of course, this data could be stored in a simple array but oftentimes this leads to poor runtime performance. Using a more advanced data structure to represent spatial data is crucial to achieving real-time rendering performance. We briefly describe some common data structures relevant to our work.
 
 \subsection{3D Textures}
-One of the simplest approaches to storing spatial data is to simply define a mapping from 3D space into a 3D texture, essentially a cube. While this is straightforward to visualize and is easy to work with, 3D textures require a large amount of memory. If the data to be stored is sparse (i.e.\ most positions in space do not have a corresponding value) this memory is wasted. Also, GPUs are able to take advantage of spatial coherency in 3D textures and can provide fast caching and filtering of the data.
+One of the simplest approaches to storing spatial data is to simply define a uniform mapping from 3D space into a 3D texture, essentially a cube. While this is straightforward to visualize and is easy to work with, 3D textures require a large amount of memory. If the data to be stored is sparse (i.e.\ most positions in space do not have a corresponding value) this memory is wasted. Also, GPUs are able to take advantage of spatial coherency in 3D textures and can provide fast caching and filtering of the data.
 
 \subsection{Clipmaps}
 In a 3D texture, we essentially have a uniform grid of values: the resolution, or level of detail, of data remains constant throughout the entire texture. With many types of data, we don't need the same resolution---for example, in many applications, the farther away from the viewer we are the less detail we need. A clipmap~\cite{Tanner:1998:CVM:280814.280855, Losasso:2004:GCT:1186562.1015799} is based on this concept and represents 3D space using differing levels of detail. The resolution at each level of detail is halved, reducing the amount of memory needed to represent the same 3D space as an equivalent 3D texture. The issue with sparse memory still exists, but it is alleviated greatly.
@@ -59,10 +64,12 @@ where $\bm{x}$ is a point in space, $\omega_o$ is the direction of outgoing ligh
 
 Of course, in order to compute this we must at the very least discretize the problem. Furthermore, the complexity involved in calculating all of the integrals that would be needed to render a full scene as stated by the rendering equation is computationally infeasible. Thus we need some way to approximate this complete model of light.
 
+% TODO expand this, explain BRDF, Cook Torrance?
+
 \section{Global Illumination}
 To approximate the rendering equation it is helpful to divide light into two categories: direct and indirect light. Direct light for a point is calculated by iterating through all light sources in a scene and computing their contribution to the point. This is relatively easy and straightforward. Indirect lighting for a point is the light accumulated from non-light sources in the scene, like the ambient light that is bounced off of other surfaces.
 
-The term global illumination generally refers to a lighting model which attempts to accurately approximate indirect illumination. Approaches like having a constant ambient light amount (as is done in the classic Phong~\cite{phong1975illumination} lighting model) and using ambient occlusion techniques like SSAO and HBAO do try to emulate some of the effects of indirect light but do not really attempt to accomplish full global illumination. For our algorithm, some of the main visual qualities we consider necessary are color bleeding, specular reflections, and limited light leaking (see Figure~\ref{fig:giqualities}). Here we give an overview of some techniques used to achieve more accurate global illumination.
+The term global illumination generally refers to a lighting model which attempts to accurately approximate indirect illumination. Approaches like having a constant ambient light amount (as is done in the classic Phong~\cite{phong1975illumination} lighting model) and using ambient occlusion techniques like SSAO and HBAO do try to emulate some of the effects of indirect light but do not really attempt to accomplish full global illumination. For our algorithm, some of the main visual qualities we consider necessary are color bleeding and specular reflections (see Figure~\ref{fig:giqualities}). Here we give an overview of some techniques used to achieve more accurate global illumination.
 
 \begin{figure}[h]
 \centering
@@ -83,7 +90,7 @@ Raytracing is a common rendering technique which involves casting rays into a sc
 \end{figure}
 
 \subsection{Baked Lighting}
-Another approach to global illumination is to approximate the radiance in a scene using some spatial representation. Then, when computing the lighting the radiance can be looked up and used to achieve global illumination. Baked lighting follows this approach by pre-processing a scene's geometry and light sources in order to compute the radiance in a scene. During run time, the radiance can be looked up quickly. The clear and major drawback of this method is it is completely static: if a light moves the radiance map created is no longer valid. Still, it is a great way to enhance visual quality when working with static lights.
+Another approach to global illumination is to approximate the radiance in a scene using some spatial representation. Then, when computing the lighting the radiance can be looked up and used to achieve global illumination. Baked lighting follows this approach by pre-processing a scene's geometry and light sources in order to compute the radiance in a scene. During run time, the radiance can be looked up quickly. The clear and major drawback of this method is it is completely static: if a light or the geometry moves the radiance map created is no longer valid. Still, it is a great way to enhance visual quality when working with static lights and a relatively static scene.
 
 \subsection{Voxel Cone Tracing}
 The focus of much research, as well as this thesis, is on computing real-time global illumination with support for dynamic objects and lighting. Voxel cone tracing~\cite{crassin2011interactive} is a relatively recent method for computing this that has gained some popularity, with variations being implemented by NVIDIA~\cite{nvidiavxgi} (which is incorporated into the Unreal Engine) and some games~\cite{mclaren2016cascaded}.

@@ -2,6 +2,10 @@
 
 Global illumination is a broad term that can be approached in many ways. With respect to this thesis, we only focus on comparisons with other real-time, fully dynamic techniques are used.
 
+\section{Reflective Shadow Maps}
+pretty sure this is where VPLs came from?
+
+\section{Voxel Cone Tracing}
 * Global Illumination using Voxel Cone Tracing
     - octrees vs clipmaps vs 3d textures (vs warped)
     - proprietary
@@ -9,6 +13,7 @@ Global illumination is a broad term that can be approached in many ways. With re
     - octree -> no hw filtering, complex but higher resolution
     - multiple levels of radiance -> allows gathering more high frequency indirect lighting information
 
+\section{Light Propogation Volumes}
 * Light Propogation Volumes
     - in cryengine (closed source (check that); difficult to understand within context of engine)
     - somewhat like vct but only one level of detail is stored (filtered completely)
@@ -17,6 +22,7 @@ Global illumination is a broad term that can be approached in many ways. With re
     - no voxelization (no geometric information)
     - no cone tracing needed (just samples texture directly)
 
+\section{GPU Pro 4}
 * from GPU Pro 4
     - VPL injection using instanced quads (instead of RSMs) -> not as accurate but faster
 
