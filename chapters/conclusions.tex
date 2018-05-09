@@ -3,4 +3,6 @@
 \section{Future Work}
 Although voxel warping does help more efficiently use the space within a 3D texture, it can still suffer from wasted space when voxelizing a sparse scene (which leads to wasted GPU memory). An interesting way to solve this could be to utilize sparse textures. Sparse textures are analogous to classic virtual memory systems: not all parts of the texture are actually allocated in memory. Then, only the parts of the voxel texture that are used would require memory (of course the implementation allocates in fixed-size chunks, similar to pages in virtual memory).
 
-Another potential area of improvement is storing radiance differently. For example, a spherical harmonics representation or ambient cube representation could be used. This would have impacts on both lighting quality, performance, and memory usage. 
+Another potential area of improvement is storing radiance differently. For example, a spherical harmonics representation or ambient cube representation could be used. This would have impacts on both lighting quality, performance, and memory usage.
+
+% TODO injecting multiple lights. can expand more on above stuff too
