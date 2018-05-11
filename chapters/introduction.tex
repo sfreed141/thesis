@@ -8,7 +8,7 @@ Of particular importance in computer graphics are real-time applications, where 
 In this work, we implement and extend an algorithm to accomplish fast and accurate lighting for fully dynamic scenes.
 
 % TODO seems like a good thing to note (it's very engineer-y)
-It is important to keep in mind that most lighting algorithms have many tradeoffs and are adapted towards specific use cases. 
+It is important to keep in mind that most lighting algorithms have many tradeoffs and are adapted towards specific use cases. A complete lighting system may also combine many different lighting algorithms in order to achieve the desired balance between quality, performance, and ease of use.
 
 \section{Real-Time Global Illumination}
 In general, lighting at a given point is a combination of direct and indrect light. Direct light is light accumulated directly from a light source, whereas indirect light is the light that comes from other non-light sources in the scene (e.g.\ the light that has `bounced' off of objects in the scene).
@@ -22,7 +22,7 @@ For dynamic real-time global illumination, a common approach is to first constru
 
 \section{Our Contribution}
 % TODO should I put results here too?
-The main contribution of this work will be a novel way of computing global illumination based on voxel cone tracing with a focus on ease of use and speed while still producing high quality results. We hope this provides a competitive alternative to existing real-time global illumination systems. The novel contribution, voxel warping, is a way to handle large scenes in a memory efficient and simple way. The idea is to adjust the voxel density of the scene based on its distance from the camera, which allows a large scene to be represented without requiring large memory or performance overheads.
+The main contribution of this work is a novel way of computing global illumination based on voxel cone tracing with a focus on ease of use and speed while still producing high quality results. We hope this provides a competitive alternative to existing real-time global illumination systems. The novel contribution, voxel warping, is a way to handle large scenes in a memory efficient and simple way. The idea is to adjust the voxel density of the scene based on its distance from the camera, which allows a large scene to be represented without requiring large memory or performance overheads.
 
 % TODO fact check and citations needed
 Another important part of our contribution is that the implementation is open-source (under the MIT license) and cross platform (on Linux and Windows using modern OpenGL~\footnote{macOS is not supported since Apple only supports up to OpenGL 4.1, whereas we require 4.3 (for features like compute shaders).}. Many graphics implementations are developed in the research or industrial space and are oftentimes not made available to the public for various reasons (e.g.\ copyright). Even implementations that are openly available often are tied to a specific game engine or other large codebase, making it difficult to understand or integrate into one's own project. Furthermore, many implementations utilize DirectX as their graphics API, which limits the implementation to Windows only. We hope that providing an easy to understand and cross platform implementation will help others learn more about voxel cone tracing and dynamic real-time global illumination.

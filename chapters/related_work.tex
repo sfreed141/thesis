@@ -22,18 +22,27 @@ Rasterized Voxel-Based Dynamic Global Illumination described by Doghramachi in ?
 Just like LPVs, the main downside here is lack of specular reflections, which stems from the low resolution grid used for the LPV (32x32x32, as mentioned in the implementation, whereas we aim for somewhere on the order of $128^3$ to $256^3$). Also, the method does suffer from some light leaking due to how point lights are injected into the scene: instead of creating an RSM (which handles occlusion properly), all voxels within a defined distance of the point light are injected into the initial LPV.
 
 \section{Voxel Cone Tracing}
-In 2011, Crassin et al.\ introduced Interactive Indirect Illumination Using Voxel Cone Tracing. A primary improvement over the existing methods sought in this method was to obtain higher frequency lighting details, such as specular reflections.
+In 2011, Crassin et al.\ introduced Interactive Indirect Illumination Using Voxel Cone Tracing. A primary improvement over the existing methods sought in this method was to obtain higher frequency lighting details, such as specular reflections. The core idea to balance performance  with lighting detail is to make use of a filtered radiance representation which is then sampled using voxel cone tracing, a concept they introduce.
 
+The first step in the algorithm is to create a high resolution radiance representation. Crassin et al.\ inject radiance into the leaves of an octree using the familiar RSM technique. An octree is used to reduce memory consumption, a consequence of using such a high resolution radiance representation. The octree is then filtered recursively bottom up until all inner nodes in the octree have a filtered radiance value. The final step, voxel cone tracing, is essentially a combination of raymarching and mipmapping: samples come from successively lower levels of detail.
+
+% TODO move the section on vct from implementation here instead?
+% TODO by varying the angle of the cone, different affects can be replicated: large -> diffuse, small -> specular
+
+Although the octree representation does help alleviate issues when dealing with sparse scenes, GPU memory consumption is still an issue especially for larger scenes. In addition, due to their tree-like nature, octrees are awkward for GPU use and do not benefit from things like hardware supported texture filtering. To address this, NVIDIA decided to use a clipmap instead of an octree in their standard implementation of voxel cone tracing, VXGI.
+
+% TODO explain why warping may be better approach: simpler (one texture), memory use, easily configurable, better suited to large scenes?
+
+\iffalse
+% TODO forward+ indirect?
 
 * Global Illumination using Voxel Cone Tracing
-    - octrees vs clipmaps vs 3d textures (vs warped)
-    - proprietary
-    - vxgi: clipmaps, in UE4 but still closed source
+- octrees vs clipmaps vs 3d textures (vs warped)
+- proprietary
+- vxgi: clipmaps, in UE4 but still closed source
     - octree -> no hw filtering, complex but higher resolution
     - multiple levels of radiance -> allows gathering more high frequency indirect lighting information
 
-% TODO forward+ indirect?
-\iffalse
 * some common issues with other works (this could also go in intro)
 - closed source
 - implementation details matter -> difficult to understand from research or white papers
