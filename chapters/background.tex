@@ -4,10 +4,13 @@
 \subsection{Triangles}
 To develop an interactive 3D application a scene representation is needed. Traditionally, all geometric objects in a scene are represented by triangles. For example, to model a simple cube we can represent each of its faces using two triangles for a total of 12 triangles. The reason for using triangles is due to their geometric simplicity (triangles contain the fewest number of points that define a plane). Also, as dedicated Graphics Processing Units (GPUs) became more common they were designed with this traditional triangle rasterization in mind so they have specialized hardware to operate on triangles. In other words, triangles are fast to process.
 
-But triangles do have some issues. Primarily, they do a good job of representing surfaces (since they are inherently 2D) but they don't lend themselves well to volumetric (3D) data. For example, a natural representation of a cloud would be a 3D volume filled with the density of the cloud at a given point within the volume. There are algorithms that can convert from a volumetric representation to a triangle one---marching cubes~\cite{lorensen1987marching} being the most popular---but it still only models an arbitrary isosurface as opposed to the actual volume.
+But triangles do have some issues. Primarily, they do a good job of representing surfaces (since they are inherently 2D) but they don't lend themselves well to volumetric (3D) data. For example, a natural representation of a cloud would be a 3D volume filled with the density of the cloud at a given point within the volume. There are algorithms that can convert from a volumetric representation to a triangle one---marching cubes~\cite{Lorensen:1987:MCH:37402.37422} being the most popular---but it still only models an arbitrary isosurface as opposed to the actual volume.
 
 \subsection{Voxels}
-Voxels (volume elements) represent 3D objects in a natural way. A volumetric representation of an object is a 3D grid of cells (the voxels) which hold any data relevant to that voxel: color, transparency, and normal, to name a few. Recently, voxels have grown popular in the computer graphics field due to this natural representation of 3D objects. The main reason voxels were not used much in the past is due to the amount of memory required to store a voxelized representation as well as GPUs being specialized for triangle rasterization. This restriction has largely been lifted since modern GPUs have much more memory and general purpose GPU (GPGPU) computing has allowed programmers to work more easily with non-triangle based computing.
+Voxels (volume elements) represent 3D objects in a natural way. A volumetric representation of an object is a 3D grid of cells (the voxels) which hold any data relevant to that voxel: color, transparency, and normal, to name a few. Recently, voxels have grown popular in the computer graphics field due to this natural representation of 3D objects. The main reason voxels were not used much in the past is due to the amount of memory required to store a voxelized representation as well as GPUs being specialized for triangle rasterization. This restriction has largely been lifted since modern GPUs have much more memory and general purpose GPU (GPGPU) computing has allowed programmers to work more easily with non-triangle based computing~\cite{Crassin:2009:GRS:1507149.1507152,crassin2012dynamic}.
+
+% TODO? cite Crassin:2009:GRS:1507149.1507152 eisemann2008single
+% could also have this be part of future work: trying out different voxelization techniques
 
 \begin{figure}[h]
 \centering
@@ -16,8 +19,9 @@ Voxels (volume elements) represent 3D objects in a natural way. A volumetric rep
 \label{fig:bunnyvoxel}
 \end{figure}
 
+% TODO do i need to cite this stuff? is there a way to blanket statement the knowledge with opengl docs, textbooks, etc.?
 \section{Computer Graphics Primer}
-This thesis has a heavy focus on implementation details and requires a solid foundation in understanding computer graphics. Thus this brief primer will introduce the most important topics including the graphics pipeline, transforms, and some common graphics terminology and techniques.
+This thesis has a heavy focus on implementation details and requires a solid foundation in understanding computer graphics. Thus this brief primer will introduce the most important topics including the graphics pipeline, transforms, and some common graphics terminology and techniques. For more information, we encourage Akenine-M{\"o}ller et al.'s Real-Time Rendering~\cite{moller2008rtr} for a complete survey of real-time rendering and the OpenGL and GLSL specifications~\cite{opengl45spec,glsl45spec} for reference.
 
 \subsection{The Graphics Pipeline and Rasterization}
 The ultimate goal of most graphics work is to produce a 2D image from some set of input data, typically a scene filled with triangle meshes and various light sources. This process is accomplished in several distinct stages which compose the classic graphics pipeline, some of which are configurable through shaders. We give a brief overview of the pipeline here, but encourage referring to TODO for a more detailed explanation.
@@ -75,17 +79,17 @@ Many algorithms in computer graphics require a way to query particular aspects a
 One of the simplest approaches to storing spatial data is to simply define a uniform mapping from 3D space into a 3D texture, essentially a cube. While this is straightforward to visualize and is easy to work with, 3D textures require a large amount of memory. If the data to be stored is sparse (i.e.\ most positions in space do not have a corresponding value) this memory is wasted. Also, GPUs are able to take advantage of spatial coherency in 3D textures and can provide fast caching and filtering of the data.
 
 \subsection{Clipmaps}
-In a 3D texture, we essentially have a uniform grid of values: the resolution, or level of detail, of data remains constant throughout the entire texture. With many types of data, we don't need the same resolution---for example, in many applications, the farther away from the viewer we are the less detail we need. A clipmap~\cite{Tanner:1998:CVM:280814.280855, Losasso:2004:GCT:1186562.1015799} is based on this concept and represents 3D space using differing levels of detail. The resolution at each level of detail is halved, reducing the amount of memory needed to represent the same 3D space as an equivalent 3D texture. The issue with sparse memory still exists, but it is alleviated greatly.
+In a 3D texture, we essentially have a uniform grid of values: the resolution, or level of detail, of data remains constant throughout the entire texture. With many types of data, we don't need the same resolution---for example, in many applications, the farther away from the viewer we are the less detail we need. A clipmap~\cite{Tanner:1998:CVM:280814.280855, Losasso:2004:GCT:1015706.1015799} is based on this concept and represents 3D space using differing levels of detail. The resolution at each level of detail is halved, reducing the amount of memory needed to represent the same 3D space as an equivalent 3D texture. The issue with sparse memory still exists, but it is alleviated greatly.
 
 \begin{figure}[h]
 \centering
 \includegraphics[scale=1.0]{geometry_clipmap.jpg}
-\caption{Example of clipmaps applied to terrain. Notice that the inner levels have higher detail while each successive outer level lowers the detail level by a factor of 2 (image from~\cite{Losasso:2004:GCT:1186562.1015799}).}
+\caption{Example of clipmaps applied to terrain. Notice that the inner levels have higher detail while each successive outer level lowers the detail level by a factor of 2 (image from~\cite{Losasso:2004:GCT:1015706.1015799}).}
 \label{fig:geometryclipmaps}
 \end{figure}
 
 \subsection{Octrees}
-Another way of representing 3D space can be done using a tree structure. An octree~\cite{Cra12, meagher1982geometric} is a tree where each child node is an octant of its parent (see Figure~\ref{fig:octree}). This representation is very efficient memory wise when it comes to sparse data since there is no requirement the tree has to be full: if there is no data in an octant, we can leave it childless. The tradeoff, however, is we have to recurse through the octree for every query. This can be difficult to do on the GPU and it loses the hardware supported caching and filtering provided to 3D textures.
+Another way of representing 3D space can be done using a tree structure. An octree~\cite{MEAGHER1982129} is a tree where each child node is an octant of its parent (see Figure~\ref{fig:octree}). This representation is very efficient memory wise when it comes to sparse data since there is no requirement the tree has to be full: if there is no data in an octant, we can leave it childless. The tradeoff, however, is we have to recurse through the octree for every query. This can be difficult to do on the GPU and it loses the hardware supported caching and filtering provided to 3D textures.
 
 \begin{figure}[h]
 \centering
@@ -97,7 +101,7 @@ Another way of representing 3D space can be done using a tree structure. An octr
 \section{Radiance and the Rendering Equation}
 As our goal is to accurately model light in our virtual scene, it makes sense to base our shading model on the behavior of real light. The theoretical basis for understanding and measuring light is confined within the field of radiometry. Fortunately, for our purposes, we can focus more on the applied aspects of radiometry for computer graphics---for example, the wave-like nature of light is mostly ignored in favor of particle based behavior.
 
-Fundamentally, light is energy. Therefore, our goal is to compute the amount of light energy at a surface point from a given viewpoint (our camera). This quantity, called radiance, is the instantaneous amount of light energy emitted along the ray of light from the point to the camera. Kajiya~\cite{kajiya1986rendering} presents this problem mathematically in the rendering equation:
+Fundamentally, light is energy. Therefore, our goal is to compute the amount of light energy at a surface point from a given viewpoint (our camera). This quantity, called radiance, is the instantaneous amount of light energy emitted along the ray of light from the point to the camera. Kajiya~\cite{Kajiya:1986:RE:15886.15902} presents this problem mathematically in the rendering equation:
 \begin{equation*}
     L_o(\bm{x}, \omega_o) = L_e(\bm{x}, \omega_o) + \int_\Omega f_r(\bm{x}, \omega_i, \omega_o)\ L_i(\bm{x}, \omega_i)\ (\omega_i \cdot \bm{n})\ d\omega_i
 \end{equation*}
