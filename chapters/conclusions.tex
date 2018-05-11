@@ -1,5 +1,12 @@
 \chapter{Conclusions}
 
+\begin{itemize}
+    \item Developed GI solution
+    \item Simple to implement and open source
+    \item Competitive with existing solutions
+    \item Voxel warping helps for larger scenes w/o significant performance/memory penalty
+\end{itemize}
+
 \section{Future Work}
 Although voxel warping does help more efficiently use the space within a 3D texture, it can still suffer from wasted space when voxelizing a sparse scene (which leads to wasted GPU memory). An interesting way to solve this could be to utilize sparse textures (provided via the \verb#ARB_sparse_texture# extension for OpenGL). Sparse textures are analogous to classic virtual memory systems: not all parts of the texture are actually allocated in memory. Then, only the parts of the voxel texture that are used would require memory (of course the implementation allocates in fixed-size chunks, similar to pages in virtual memory).
 

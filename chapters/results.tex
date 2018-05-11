@@ -1,5 +1,23 @@
 \chapter{Results}
 
-% hardware used, app resolution + other settings, info on resources (sponza + textures, how made, etc)
-
-% timing breakdown for render passes
+\begin{itemize}
+    \item Test setup
+    \begin{itemize}
+        \item hardware used
+        \item scene information (models, textures). multiple scenes would be good\ldots
+        \item render resolution + other settings
+    \end{itemize}
+    \item Screenshots with commentary
+    \begin{itemize}
+        \item voxel textures
+        \item complete scene with and without indirect illumination
+    \end{itemize}
+    \item Timing breakdown for render passes (w/ different settings in table or something)
+    \item Evaluation of voxel warping (voxel textures; screenshots with and without; performance penalty; different warping functions?)
+    \item Evaluation of integrating into other engines?
+    \begin{itemize}
+        \item Voxelization only requires a way to draw scene
+        \item Radiance injection needs RSMs
+        \item Shader code could be abstracted to only require position, surface normal (and TBN?)
+    \end{itemize}
+\end{itemize}
