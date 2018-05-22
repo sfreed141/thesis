@@ -7,9 +7,12 @@
     \item Voxel warping helps for larger scenes w/o significant performance/memory penalty
 \end{itemize}
 
+% TODO remember the goal is a competitive, feasible solution
+
 \section{Future Work}
 Although voxel warping does help more efficiently use the space within a 3D texture, it can still suffer from wasted space when voxelizing a sparse scene (which leads to wasted GPU memory). An interesting way to solve this could be to utilize sparse textures (provided via the \verb#ARB_sparse_texture# extension for OpenGL). Sparse textures are analogous to classic virtual memory systems: not all parts of the texture are actually allocated in memory. Then, only the parts of the voxel texture that are used would require memory (of course the implementation allocates in fixed-size chunks, similar to pages in virtual memory).
 
 Another potential area of improvement is storing radiance differently. For example, a spherical harmonics representation or ambient dice~\cite{iwanicki2017ambient} representation could be used. This would have impacts on both lighting quality, performance, and memory usage.
 
 % TODO injecting multiple lights. can expand more on above stuff too
+% other: stochastic transparency (or other way to handle transparency), vulkan, forward+, environment map (could inject into outer edges of voxels?), anisotropic voxels, second bounce by cone tracing intermediate radiance texture, emissive light, 

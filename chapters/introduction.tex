@@ -10,6 +10,15 @@ In this work, we implement and extend an algorithm to accomplish fast and accura
 % TODO seems like a good thing to note (it's very engineer-y)
 It is important to keep in mind that most lighting algorithms have many tradeoffs and are adapted towards specific use cases. A complete lighting system may also combine many different lighting algorithms in order to achieve the desired balance between quality, performance, and ease of use.
 
+% TODO example of global illumination (with/without). Possibly from my program.
+\missingfigure{Scene rendered with/without global illumination.}
+% \begin{figure}[h]
+% \centering
+% \includegraphics[scale=1.0]{TODO}
+% \caption{A scene---describing information like light sources, materials, and geometry---is rendered by computing a color for each pixel of a screen. The image on the left is rendered with global illumination whereas the image on the right is not.}
+% \label{fig:introduction_gi}
+% \end{figure}
+
 \section{Real-Time Global Illumination}
 In general, lighting at a given point is a combination of direct and indrect light. Direct light is light accumulated directly from a light source, whereas indirect light is the light that comes from other non-light sources in the scene (e.g.\ the light that has `bounced' off of objects in the scene).
 
@@ -27,7 +36,7 @@ For dynamic real-time global illumination, a common approach is to first constru
 The main contribution of this work is a novel way of computing global illumination based on voxel cone tracing with a focus on ease of use and speed while still producing high quality results. We hope this provides a competitive alternative to existing real-time global illumination systems. The novel contribution, voxel warping, is a way to handle large scenes in a memory efficient and simple way. The idea is to adjust the voxel density of the scene based on its distance from the camera, which allows a large scene to be represented without requiring large memory or performance overheads.
 
 % TODO fact check and citations needed
-Another important part of our contribution is that the implementation is open-source (under the MIT license) and cross platform (on Linux and Windows using modern OpenGL~\footnote{macOS is not supported since Apple only supports up to OpenGL 4.1~\cite{appleopenglsupport}, whereas we require 4.5 (for features like compute shaders).}. Many graphics implementations are developed in the research or industrial space and are oftentimes not made available to the public for various reasons (e.g.\ copyright). Even implementations that are openly available often are tied to a specific game engine or other large codebase\footnote{For example, NVIDIA's VXGI is integrated into a custom branch of Unreal Engine 4 (distributed as a binary)~\cite{nvidiavxgi} and Light Propogation Volumes are implemented in CryEngine3~\cite{kaplanyan2009light}. The Godot engine~\cite{godotengine} is a notable exception here and, while part of a large codebase, is relatively small and is completely open source.}, making it difficult to understand or integrate into one's own project. Furthermore, many implementations utilize DirectX as their graphics API, which limits the implementation to Windows only. We hope that providing an easy to understand and cross platform implementation will help others learn more about voxel cone tracing and dynamic real-time global illumination.
+Another important part of our contribution is that the implementation is open-source (under the MIT license) and cross platform (on Linux and Windows using modern OpenGL~\footnote{macOS is not supported since Apple only supports up to OpenGL 4.1~\cite{appleopenglsupport}, whereas we require 4.5 (for features like compute shaders, direct state access, and image objects).}. Many graphics implementations are developed in the research or industrial space and are oftentimes not made available to the public for various reasons (e.g.\ copyright). Even implementations that are openly available often are tied to a specific game engine or other large codebase\footnote{For example, NVIDIA's VXGI is integrated into a custom branch of Unreal Engine 4 (distributed as a binary)~\cite{nvidiavxgi} and Light Propogation Volumes are implemented in CryEngine3~\cite{kaplanyan2009light}. The Godot engine~\cite{godotengine} is a notable exception here and, while part of a large codebase, is relatively small and is completely open source.}, making it difficult to understand or integrate into one's own project. Furthermore, many implementations utilize DirectX as their graphics API, which limits the implementation to Windows only. We hope that providing an easy to understand and cross platform implementation will help others learn more about voxel cone tracing and dynamic real-time global illumination.
 
 \iffalse
 % old intro
