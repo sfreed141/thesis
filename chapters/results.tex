@@ -1,5 +1,49 @@
 \chapter{Results}
 
+Here we examine both the performance and visual quality of our global illumination algorithm. The primary means of evaluating performance is based on GPU memory usage and frame time. The times of each contributing render pass are also recorded. Evaluating visual quality is based largely on whether the lighting appears smooth and believable with a minimal amount of noise and artifacts.
+
+We also discuss the application of voxel warping and how it compares with other global illumination methods. Unfortunately, direct performance and visual quality comparisons are difficult to objectively measure as there are many contributing factors---mesh complexity and optimizations, texture resolution and format, shading model, graphics API, hardware, GPU driver version, etc.---that affect the final comparison, in addition to the exact implementation details. Nevertheless, we provide motivations and tradeoffs between our method and others and their potential impact on performance and quality.
+
+\section{Test Setup}
+% TODO verify driver, kernel, resolution when getting final results
+All results are obtained from a system with an i5-2400 CPU, 8GB of DDR3 RAM, and an NVIDIA GeForce GTX 970 GPU. The system is running Arch Linux kernel 4.16.8-1 and uses the proprietary NVIDIA graphics driver version 396.24. The application uses an OpenGL 4.5 context and the scene is rendered with a window resolution of 1920x1080.
+
+% TODO give #vertices, texture resolutions and sizes?
+The model used in the test scenes is the Crytek Sponza scene. The textures from the original Sponza scene are replaced with ones necessary for PBR (materials are defined by a diffuse color, roughness, metallic, normal, and optionally an alpha texture). Mipmaps for the original textures were also precomputed and stored along with the full size 1024x1024 textures as DDS (Microsoft DirectDraw Surface) files using the compressed DXT5 format for faster scene loading.
+
+To measure performance timings for each render pass we make use of OpenGL timer queries using the \verb#GL_TIME_ELAPSED# query type. The results of the query object are double buffered to ensure introducing the timer query does not affect the total render time.
+
+\section{Performance}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+Render Pass & Render Pass Time (ms) \\
+\midrule
+Voxelize                & 0.0\\
+Radiance injection      & 0.0\\
+Radiance Filtering      & 0.0\\
+Depth Prepass           & 0.0\\
+Final Shading           & 0.0\\
+\midrule
+Total                   & 0.0\\
+\bottomrule
+\end{tabular}
+\caption{Times measured for each render pass.}
+\label{tbl:renderpasstiming}
+\end{table}
+
+% TODO independent variables for tables? screen resolution, voxel dim, #cones, with/without warping
+% TODO and/or graphs
+
+% TODO memory usage
+
+% TODO performance comparison with/without warping
+
+\section{Quality}
+% TODO comparison of warped quality with no warped and related work?
+
 \begin{itemize}
     \item Test setup
     \begin{itemize}
