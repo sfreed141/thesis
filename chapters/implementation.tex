@@ -33,8 +33,17 @@ For the shader program, the voxel textures are bound as \texttt{image3D} objects
     \caption{Voxelization}
     \label{alg:voxelization}
     \begin{algorithmic}
-        \Procedure{TODO}{}
-        \EndProcedure
+        \For {each triangle $t$}
+        \State {$axis = \mathrm{computeDominantAxis}(t_{normal})$}
+        \State {$projectedPosition = P_{axis} * worldPosition$}
+        \EndFor
+        \State{Rasterization}\Comment {Performed by hardware}
+        \For {each rasterized fragment} \Comment {position is in NDC}
+        \State {transform NDC coordinates to texture space ($[0, 1]$)}
+        \State {Realign NDC coordinates with standard coordinate system}
+        \State {Insert fragment into voxel texture}
+        \EndFor
+
     \end{algorithmic}
 \end{algorithm}
 
@@ -88,12 +97,24 @@ It is important the shadowmap is rendered with a high enough resolution (relativ
 % TODO show lighting artifacts if shadowmap resolution too low
 % TODO temporal filtering?
 
+% \begin{lstlisting}[language=C,breaklines=true,basicstyle=\footnotesize\ttfamily]
+% vec2 shadowmapTexcoord = vec2(threadId) / vec2(shadowmapSize);
+% float shadowmapDepth = texture(shadowmap, shadowmapTexcoord).r;
+% vec3 ndc = vec3(shadowmapTexcoord, shadowmapDepth) * 2 - vec3(1);
+% vec3 worldPosition = (lsInverse * vec4(ndc, 1)).xyz;
+% ivec3 voxelPosition = ivec3(voxelIndex(worldPosition, voxelDim, voxelCenter, voxelMin, voxelMax, warpVoxels));
+% \end{lstlisting}
+
 \begin{algorithm}
     \caption{Radiance Injection}
     \label{alg:radianceinjection}
     \begin{algorithmic}
-        \Procedure{TODO}{}
-        \EndProcedure
+        \For{$\text{each pixel coordinate } p = (p_x,p_y) \text{ in shadowmap}$} \Comment{$p_x, p_y \in [0,1]$}
+        \State {$depth = \mathrm{sampleDepthFromShadowmap}(p)$}
+        \State {$ndc = (p_x, p_y, depth) * 2 - 1$} \Comment{Convert coordinate to NDC}
+        \State {$worldPosition = inverseLight * ndc$}
+        \State {$voxelPosition = \mathrm{computeVoxelPosition}(worldPosition)$}
+        \EndFor
     \end{algorithmic}
 \end{algorithm}
 
@@ -106,23 +127,13 @@ With the highest level of detail of the radiance texture filled, the next step i
 OpenGL is able to automatically generate mipmaps for 3D textures by calling \verb#glGenMipmaps(GL_TEXTURE_3D)#, however manually filtering the textures using a compute shader turned out much faster for this application (how OpenGL calculates mipmaps is implementation defined, so the performance can vary between systems and drivers). To perform the filtering, a compute shader kernel is launched for each level of the radiance texture (not including the base level). The kernel is launched with one thread for each voxel in the current level. Each thread can be conceptually located at the corners of each voxel in the previous level, as shown in TODOODODO, and averages the surrounding 8 values to compute the filtered value of its respective voxel. In other words, this is a 3D convolution with a 2x2x2 kernel with even weights.
 
 % TODO probably remove this, or maybe future work?
-% TODO or do it and then it's current work (and novel)
 The other benefit to manually filtering is different methods can be used. For example, adjusting the size or weights of the filtering kernel could result in different effects.
-
-\begin{algorithm}
-    \caption{Radiance Filtering}
-    \label{alg:radiancefiltering}
-    \begin{algorithmic}
-        \Procedure{TODO}{}
-        \EndProcedure
-    \end{algorithmic}
-\end{algorithm}
 
 \missingfigure{Show all the filtered miplevels}
 
 \section{Shading}
 % TODO do i need to show code/go step by step here?
-The final shading step takes all of the previously generated information and renders the scene. Direct lighting is computed from multiple lights and uses the classic Blinn-Phong shading model~\cite{Phong:1975:ICG:360825.360839}. Indirect lighting is computed using voxel cone tracing. Normal mapping (similar to bump mapping~\cite{Blinn:1978:SWS:965139.507101}), shadow mapping, and post processing effects also occur here.
+The final shading step takes all of the previously generated information and renders the scene. Direct lighting is computed from multiple lights and uses the classic Blinn-Phong shading model~\cite{Phong:1975:ICG:360825.360839} or the physically based Cook-Torrance shading model~\cite{Cook:1982:RMC:357290.357293}\footnote{We use the Smith Schlick-GGX Geometric Attenuation function, Trowbridge-Reitz GGX Normal Distribution function, and Schlick's approximation for the Fresnel function.}. Indirect lighting is computed using voxel cone tracing. Normal mapping (similar to bump mapping~\cite{Blinn:1978:SWS:965139.507101}), shadow mapping, and post processing effects also occur here.
 
 % TODO section  on normal mapping, shadow mapping, postprocessing?  or maybe in background?
 
@@ -140,11 +151,19 @@ We calculate direct lighting by iterating over each light source in the scene an
 % TODO should I expand on this in detail?
 
 \begin{algorithm}
-    \caption{Direct Lighting}
+    \caption{Direct Lighting (performed on each rasterized fragment)}
     \label{alg:directlighting}
     \begin{algorithmic}
-        \Procedure{TODO}{}
-        \EndProcedure
+        \State {Fetch material properties from textures}
+        \State {$lighting = 0$}
+        \For {each light in the scene}
+            \State {$lighting = lighting + \mathrm{computeDiffuse}()$}
+
+            \If {in shadow}
+                \State {$shadowFactor = \mathrm{computeShadowAmount}()$}
+                \State {$lighting = shadowFactor * lighting$}
+            \EndIf
+        \EndFor
     \end{algorithmic}
 \end{algorithm}
 
@@ -161,7 +180,7 @@ For the diffuse cones we chose an aperture of $45^\circ$ with one cone oriented 
 
 % TODO use Simon's value to determine aperture?
 % TODO make sure to define these somewhere
-The specular cone is oriented in the direction of the reflection vector, which is calculated as \texttt{-V - 2 * dot(N, -V) * N}, or by using the GLSL function \texttt{reflect()}. The aperture is derived from the material's shininess according to the following formula: $TODO$.
+The specular cone is oriented in the direction of the reflection vector, which is calculated as \texttt{-V - 2 * dot(N, -V) * N}, or by using the GLSL function \texttt{reflect()}. The aperture is derived from the material's roughness according to the following formula (determined experimentally): $0.1 * \pi * roughness$.
 
 \missingfigure{Show hemisphere with the cones used}
 
@@ -173,6 +192,30 @@ Combining this all together, we sample from the radiance texture at a level of d
 
 % TODO go over all the vct settings
 The implementation of a single cone tracing instance is done entirely within a fragment shader. The main inputs are the radiance texture, the position to start tracing from, and the direction in which to trace. There are also several configurable parameters that influence the cone tracing. We have \texttt{steps}, the maximum number of samples to take; \texttt{bias}, the initial offset from the starting position (in order to avoid self illumination); \texttt{coneAngle}, the angle of the cone; \texttt{coneHeight}, the starting height of the cone; and \texttt{lodOffset}, a constant offset used when determining the level of the radiance texture to sample from. % TODO finish explaining the vct loop
+
+% \begin{lstlisting}[breaklines=true,language=C,basicstyle=\footnotesize\ttfamily]
+% vec4 traceCone(sampler3D voxelTexture, vec3 position, vec3 normal, vec3 direction, int steps, float bias, float coneAngle, float coneHeight, float lodOffset) {
+%     vec3 color = vec3(0);
+%     float alpha = 0;
+
+%     float scale = 1.0 / voxelDim;
+%     vec3 start = position + bias * normal * scale;
+%     for (int i = 0; i < steps && alpha < 0.95; i++) {
+%         float coneRadius = coneHeight * tan(coneAngle / 2.0);
+%         float lod = log2(max(1.0, 2 * coneRadius));
+%         vec3 samplePosition = start + coneHeight * direction * scale;
+%         if (any(notEqual(samplePosition, clamp(samplePosition, 0, 1)))) break;
+
+%         vec4 sampleColor = textureLod(voxelTexture, samplePosition, lod + lodOffset);
+%         float a = 1 - alpha;
+%         color += sampleColor.rgb * a;
+%         alpha += a * sampleColor.a;
+%         coneHeight += coneRadius;
+%     }
+
+%     return vec4(color, alpha);
+% }
+% \end{lstlisting}
 
 \begin{algorithm}
     \caption{Voxel Cone Tracing}
