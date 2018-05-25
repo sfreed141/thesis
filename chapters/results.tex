@@ -9,7 +9,7 @@ We also discuss the application of voxel warping and how it compares with other 
 All results are obtained from a system with an i5-2400 CPU, 8GB of DDR3 RAM, and an NVIDIA GeForce GTX 970 GPU. The system is running Arch Linux kernel 4.16.8-1 and uses the proprietary NVIDIA graphics driver version 396.24. The application uses an OpenGL 4.5 context and the scene is rendered with a window resolution of 1920x1080.
 
 % TODO give #vertices, texture resolutions and sizes?
-The model used in the test scenes is the Crytek Sponza scene. The textures from the original Sponza scene are replaced with ones necessary for PBR (materials are defined by a diffuse color, roughness, metallic, normal, and optionally an alpha texture). Mipmaps for the original textures were also precomputed and stored along with the full size 1024x1024 textures as DDS (Microsoft DirectDraw Surface) files using the compressed DXT5 format for faster scene loading.
+The model used in the test scenes is the Crytek Sponza scene. The textures from the original Sponza scene are replaced with ones necessary for PBR (materials are defined by a diffuse color, roughness, metallic coefficient, normal, and optionally an alpha texture). Mipmaps for the original textures were also precomputed and stored along with the full size 1024x1024 textures as DDS (Microsoft DirectDraw Surface) files using the compressed DXT5 format for faster scene loading.
 
 To measure performance timings for each render pass we make use of OpenGL timer queries using the \verb#GL_TIME_ELAPSED# query type. The results of the query object are double buffered to ensure introducing the timer query does not affect the total render time.
 
