@@ -49,62 +49,95 @@ For the shader program, the voxel textures are bound as \texttt{image3D} objects
     \end{algorithmic}
 \end{algorithm}
 
-Starting in the vertex shader, the only operation performed is transforming the object from object space to world space using its appropriate model matrix. In the geometry shader we take a single triangle in world space, transform it based on its dominant axis, and output the resulting triangle in clip space. The triangle's dominant axis is determined by finding the largest component of its normal (by absolute value)\footnote{Finding the dominant axis is really finding the maximum dot product of each axis with the normal, but since we use the standard basis this reduces to just finding the largest component of the normal.}. We then apply the appropriate projection matrix according to the dominant axis and output the resulting triangle to be rasterized. In the fragment shader, each fragment's position in Normalized Device Coordinates can be used to determine its position within the voxel textures. Note, however, that the components of each fragment's position need to be realigned due to projecting along different axes. Finally, the voxel information can be written into the voxel textures, which are bound as \texttt{image3D} objects in the shader.
+Starting in the vertex shader, the only operation performed is transforming the object from object space to world space using its appropriate model matrix. In the geometry shader we take a single triangle in world space, transform it based on its dominant axis, and output the resulting triangle in clip space. The triangle's dominant axis is determined by finding the largest component of its normal (by absolute value)\footnote{Finding the dominant axis is really finding the maximum dot product of each axis with the normal, but since we use the standard basis this reduces to just finding the largest component of the normal.}. We then apply the appropriate projection matrix according to the dominant axis and output the resulting triangle to be rasterized. In the fragment shader, each fragment's position in Normalized Device Coordinates can be used to determine its position within the voxel textures. Note, however, that the components of each fragment's position need to be realigned due to projecting along different axes. Finally, the voxel information can be written into the voxel textures, which are bound as \texttt{image3D} objects in the shader. The result of this voxelization is shown in Figure~\ref{fig:voxels_off}.
 
 However there is still one more issue: multiple voxel fragments can be mapped to the same cell in the voxel textures. Without any synchronization, the final voxel values are not deterministic and can result in temporal artifacts. To solve this, we average the resulting color value using atomic operations\footnote{Other approaches to this problem (with various tradeoffs) can be used (Doghramachi uses an atomic max operation on a custom defined metric in order to avoid needing to perform an average~\cite{doghramachi2013rasterized}). These are generally used to combat performance issues or hardware limitations.}.
 % TODO should explain rgba8 + faking atomic avg vs rgba16f + atomicAdd + compute shader
 
-\missingfigure{Show scene on left, voxelized scene on right}
+\begin{figure}[h]
+\centering
+    \includegraphics[width=\textwidth]{voxels_off.png}
+    \caption{Visualization of the voxels resulting from the rasterization-based approach (without conservative rasterization).}
+    \label{fig:voxels_off}
+\end{figure}
 
 % TODO need to work this in better. subsection?
 % TODO should expand on problem more
 \subsubsection{Conservative Rasterization}
-As mentioned previously, we need conservative rasterization to minimize holes and cracks in the voxelization. To achieve this, we use an MSAA based approach~\cite{takeshige2015basics}. MSAA (multi-sample anti-aliasing) is a technique used for smoothing out ragged edges (aliasing) in a rasterized image. Instead of only sampling at one position inside the voxel, multiple samples are used (hence the name). These samples are typically distributed to maximize the possibility of a rasterized fragment being produced. For each sample point that overlaps with the triangle, a fragment is generated. The final value of the fragment (e.g.\ rgb color value of a pixel) is the averaged value of all the samples. For conservative rasterization, we only need one fragment to be generated, which can be configured with TODO. While the MSAA method of conservative rasterization is not perfect, it is cross-platform, simple to use, and efficient. Other notable methods would be manually dilating each triangle in a geometry shader (better quality but slower)~\cite{akenine2005conservative} or using a GPU vendor specific extension, like \verb#GL_NV_conservative_raster# (better quality but not cross-platform).
+As mentioned previously, we need conservative rasterization to minimize holes and cracks in the voxelization. To achieve this, we use an MSAA based approach~\cite{takeshige2015basics}. MSAA (multi-sample anti-aliasing) is a technique used for smoothing out ragged edges (aliasing) in a rasterized image. Instead of only sampling at one position inside a pixel to determine if a fragment should be generated multiple samples are used (hence the name). These samples are typically distributed to maximize the possibility of a rasterized fragment being produced. If any of the samples overlap with the triangle a fragment is generated for that pixel. Applied to voxelization, this means there is a smaller chance that a triangle will fail to produce a fragment for any voxel it only partially occupies. While the MSAA method of conservative rasterization is not perfect (a partially occupied voxel won't always produce a fragment), it is cross-platform, simple to use, and efficient. Other notable methods would be manually dilating each triangle in a geometry shader (better quality but slower)~\cite{akenine2005conservative} or using a GPU vendor specific extension, like \verb#GL_NV_conservative_raster# (better quality but not cross-platform). A comparison between no conservative rasterization, MSAA-based conservative rasterization, and the NVIDIA extension is shown in Figure~\ref{fig:conservativerasterization}\footnote{Also note the erroneous fragments generated when using the NVIDIA extension. These extra fragments are produced by some methods of (overly) conservative rasterization and relies on the user to manually cull these fragments).}.
 
 % TODO should implement the geometry shader based and then compare performance quality of all 3 (might need to do that indirect rendering thing too...)
-% TODO go through shaders. NV_conservative_raster, MSAA based (CITE THIS), image of MSAA and the sampling, one fragment for msaa
 
 % Camera Position (8.0, 2.7, -1.3), Direction (-1.0, -0.0, 0.3)
 
-\missingfigure{With/without conservative rasterization. MSAA vs NV?}
+\begin{figure}[h!]
+\centering
+    \begin{subfigure}[t]{0.65\textwidth}
+        \includegraphics[width=\textwidth]{voxels_off.png}
+        \caption{No conservative rasterization}
+    \end{subfigure}
+    \begin{subfigure}[t]{0.65\textwidth}
+        \includegraphics[width=\textwidth]{voxels_msaa.png}
+        \caption{MSAA-based conservative rasterization}
+    \end{subfigure}
+    \begin{subfigure}[t]{0.65\textwidth}
+        \includegraphics[width=\textwidth]{voxels_nv.png}
+        \caption{NVIDIA's conservative rasterization extension}
+    \end{subfigure}
+    \caption{Conservative rasterization produces `extra' fragments in order to produce a more solid voxelization. The effects are particularly noticeable on the pillar between the red and green curtain on the left.}
+    \label{fig:conservativerasterization}
+\end{figure}
 
 \subsection{Tesselation-Based Approach to Voxelization}
 Our new method for voxelization relies completely on hardware tesselation: no rasterization required. Instead of generating fragments for each voxel we instead attempt to generate vertices for each voxel. One benefit of this method is the mapping from vertex to voxel position is fairly straightforward and does not require multiple projection matrices like in the rasterization-based approach.
 
-The core part of this approach is determining the appropriate tesselation level for a given triangle. Recall that this step is the responsibility of the tesselation control shader. Afterwards, tessel`ation primitive generation produces the tesselated vertices and provides them to the tesselation evaluation shader, where we compute each vertex's position in the voxel texture and store the vertex's color.
+The core part of this approach is determining the appropriate tesselation level for a given triangle. Recall that this step is the responsibility of the tesselation control shader. Afterwards, tesselation primitive generation produces the tesselated vertices and provides them to the tesselation evaluation shader, where we compute each vertex's position in the voxel texture and store the vertex's color. The final voxelized scene is shown in Figure~\ref{fig:tesselatedvoxels}.
 
 % TODO determining tesselation level and discarding
 The desired level of tesselation will produce one vertex for each voxel the triangle covers. Therefore, for a particular triangle, the tesselation level is determined based on the triangle's size in world space. Recall that for triangular tesselation patches there are four values: three outer tesselation levels (one for each edge) and one inner tesselation level. To determine the outer tesselation level for an edge $E$, we effectively determine how many voxels $E$ passes through (accounting for the direction of $E$): $\displaystyle outerLevel = \frac{|E|}{(\frac{E}{||E||} \cdot voxelSize)}$. To determine the inner tesselation level, we find the maximum altitude of the triangle and then perform a similar computation as with the outer level. With $a$, $b$, and $c$ being the lengths of the triangle edges, the altitude from a side $x \in \{a, b, c\}$ is given by
 \[
     h_x = \frac{2 \sqrt{s(s-a)(s-b)(s-c)}}{x}
 \]
-where $s = (a + b + c) / 2$ is the semiperimeter and the square root term is the triangle's area using Heron's Formula. The maximum altitude is then $h_{max} = \max(h_a, h_b, h_c)$. Finally, we have $innerLevel = h_{max} / voxelSize$.
+where $s = (a + b + c) / 2$ is the semiperimeter and the square root term is the triangle's area using Heron's Formula. The maximum altitude is then $h_{max} = \max(h_a, h_b, h_c)$. Finally, we have $innerLevel = h_{max} / voxelSize$. % TODO should find direction of h_max and do dot product like outer levels
 
 % TODO calculating coordinates and inserting
 After specifying the tesselation levels in the tesselation control shader, tesselation primitive generation produces the vertices that correspond to the voxels. In the tesselation evaluation shader the vertex position (in world space) is used to determine the final voxel position and is written out to the voxel texture.
 
 An important consideration for this method is the maximum tesselation level supported by the hardware. For large triangles it is possible the tesselation will not produce a solid voxelization. A simple way to address this issue is to break large triangles into smaller ones when loading the mesh. Another consideration is for small triangles where all vertices occupy a single voxel. To reduce the number of writes to the voxel texture the contributions of these vertices can be consolidated in the shader into a single operation.
 
-\missingfigure{Tesselated voxels}
+\begin{figure}[h!]
+\centering
+    \includegraphics[width=\textwidth]{voxels_tesselated.png}
+    \caption{Scene voxelized using tesselation-based voxelization.}
+    \label{fig:tesselatedvoxels}
+\end{figure}
 
 % TODO code snippets, actual OpenGL names
 \section{Shadow Mapping}
 Shadow mapping is a well known technique used for efficiently creating shadows~\cite{Williams:1978:CCS:965139.807402}. Similar to the related works, the resulting shadow map is also treated similarly to an RSM for radiance injection.
 
-To generate a shadow map for a light, we render the scene from the light's perspective and gather the depth values of the fragments. Since we need the GPU to write to an arbitrary texture (the shadowmap), we create a framebuffer object (FBO) and attach the texture as a depth attachment\footnote{This general technique is referred to as render-to-texture.}. The FBO does not require any color attachments, as we are only interested in the depth. The matrix used to transform vertices from world space to light space is an orthographic projection matrix multiplied with a view matrix generated from the light. This matrix is often called the light view matrix. Since the GPU will automatically write depth values, the fragment shader can be completely empty. The resulting shadow map, which only contains floating point depth values (in the range [0, 1]), represents the distance of each point visible to the light to the light itself.
+To generate a shadow map for a light, we render the scene from the light's perspective and gather the depth values of the fragments. Since we need the GPU to write to an arbitrary texture (the shadowmap), we create a framebuffer object (FBO) and attach the texture as a depth attachment\footnote{This general technique is referred to as render-to-texture.}. The FBO does not require any color attachments, as we are only interested in the depth. The matrix used to transform vertices from world space to light space is an orthographic projection matrix multiplied with a view matrix generated from the light. This matrix is often called the light view matrix. Since the GPU will automatically write depth values, the fragment shader can be completely empty. The resulting shadow map contains floating point depth values (in the range [0, 1]) which represent the distance of each point visible to the light to the light itself. Also note that these depth values are linear since an orthographic projection matrix is used: if a perspective projection matrix is used the depth values scale logarithmically. Figure~\ref{fig:shadowmap} shows the contents of a shadowmap for our scene.
 
 The only difference between generating a shadow map and a complete RSM is to also store the diffuse color and normal along with the depth values. Since our implementation stores voxel colors and normals already a full RSM isn't necessary for injecting the VPLs into the radiance texture.
 
-\missingfigure{Shadow map. Possibly show RSM (albedo+normal) too.}
+\missingfigure{Possibly show RSM (albedo+normal) too.}
+\begin{figure}[h!]
+\centering
+    \includegraphics[width=\textwidth]{shadowmap.png}
+    \caption{An example of a shadowmap with the depth value mapped to the red component of the image.}
+    \label{fig:shadowmap}
+\end{figure}
 
 \section{Radiance Injection}
 In this render pass, we fill a 3D texture with virtual point lights from the shadow map. Recall that the VPLs are light sources which represent the light being bounced off of geometry within the scene. Following from RSMs, the points at which this happens are precisely where the light hits the geometry, which is stored in the shadow map. Therefore, this pass involves taking all points in the shadow map and projecting the color of the corresponding geometry into the radiance texture.
 
 The radiance texture, \texttt{voxelRadiance}, has dimensions equal to that of the other voxel textures. It has a format of \texttt{RGBA8} and stores a color value and opacity.
 
-The most straightforward way to accomplish radiance injection from the shadow map is to use a compute shader and launch one thread for each pixel in the shadow map. Each thread first reads the depth value at its respective pixel, which can then be used to reconstruct the pixel's position in light space. Then, by using the inverse light view matrix, we project it from light space to world space. The world space position is used to calculate the voxel position, which is used to sample from the voxel textures and finally write the color into the radiance texture.
+The most straightforward way to accomplish radiance injection from the shadow map is to use a compute shader and launch one thread for each pixel in the shadow map. Each thread first reads the depth value at its respective pixel, which can then be used to reconstruct the pixel's position in light space. Then, by using the inverse light view matrix, we project it from light space to world space. The world space position is used to calculate the voxel position, which is used to sample from the voxel textures and finally write the color into the radiance texture, as seen in Figure~\ref{fig:radiance}.
 
 It is important the shadowmap is rendered with a high enough resolution (relative to the voxel texture resolution) to ensure a smooth radiance injection. If the shadowmap resolution is too low, there will be gaps between voxels which cause lighting artifacts. Note also that we do not need to be concerned with synchronization and atomic operations in the case that multiple threads access the same voxel position since we are only interested in the base color.
+
+In addition to injecting the VPLs we also transfer occlusion information (opacity) stored in the completely voxelized scene into the radiance texture. This operation is a straightforward transfer accomplished using another compute shader.
 
 % TODO show lighting artifacts if shadowmap resolution too low
 % TODO temporal filtering?
@@ -130,7 +163,12 @@ It is important the shadowmap is rendered with a high enough resolution (relativ
     \end{algorithmic}
 \end{algorithm}
 
-\missingfigure{Show voxelRadiance}
+\begin{figure}[h!]
+\centering
+    \includegraphics[width=\textwidth]{radiance_nolighting.png}
+    \caption{The radiance texture injects VPLs according to the shadowmap: only voxels hit by the light source result in a VPL.}
+    \label{fig:radiance}
+\end{figure}
 
 \section{Radiance Filtering}
 With the highest level of detail of the radiance texture filled, the next step is creating the filtered representation. Each successive level is half the resolution of the previous level. Therefore, the maximum number of levels the texture may have is $log_2 (\max (\text{width}, \text{height})) + 1$.
@@ -141,7 +179,29 @@ OpenGL is able to automatically generate mipmaps for 3D textures by calling \ver
 % TODO probably remove this, or maybe future work?
 The other benefit to manually filtering is different methods can be used. For example, adjusting the size or weights of the filtering kernel could result in different effects.
 
-\missingfigure{Show all the filtered miplevels}
+\begin{figure}[h!]
+\centering
+    \begin{subfigure}[t]{0.4\textwidth}
+        \includegraphics[width=\textwidth]{mipmap0.png}
+        \caption{Level 0}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[t]{0.4\textwidth}
+        \includegraphics[width=\textwidth]{mipmap1.png}
+        \caption{Level 1}
+    \end{subfigure}
+    \begin{subfigure}[t]{0.4\textwidth}
+        \includegraphics[width=\textwidth]{mipmap2.png}
+        \caption{Level 2}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[t]{0.4\textwidth}
+        \includegraphics[width=\textwidth]{mipmap3.png}
+        \caption{Level 3}
+    \end{subfigure}
+    \caption{The first 4 levels of the radiance texture are shown here (using \texttt{GL\_NEAREST\_MIPMAP\_NEAREST} filtering).}
+    \label{fig:radiancefiltered}
+\end{figure}
 
 \section{Shading}
 % TODO do i need to show code/go step by step here?
@@ -228,7 +288,7 @@ The radiance texture is sampled at varying levels of detail in order to approxim
 Combining this all together, we sample from the radiance texture at a level of detail related to the height of the cone at our sampling point. In this way, samples close to the start of the cone come from higher detailed data and samples far from the start come from lower detailed data. This allows the voxel cone tracing to gather both high frequency and low frequency details of the indirect light.
 
 % TODO go over all the vct settings
-The implementation of a single cone tracing instance is done entirely within a fragment shader. The main inputs are the radiance texture, the position to start tracing from, and the direction in which to trace. There are also several configurable parameters that influence the cone tracing. We have \texttt{steps}, the maximum number of samples to take; \texttt{bias}, the initial offset from the starting position (in order to avoid self illumination); \texttt{coneAngle}, the angle of the cone; \texttt{coneHeight}, the starting height of the cone; and \texttt{lodOffset}, a constant offset used when determining the level of the radiance texture to sample from. Also, since the cone tracing is performed in texture space, a \texttt{scale} is applied to normalized direction vectors. For each step, the cone's radius is computed from the cone's height and angle. From this, we compute the level of detail to sample from. After getting the sample color and alpha value a forward blending scheme is used. Finally, the cone's height is increased for the next iteration of the loop. The complete shader code for cone tracing is shown in Listing~\ref{lst:vct}.
+The implementation of a single cone tracing instance is done entirely within a fragment shader. The main inputs are the radiance texture, the position to start tracing from, and the direction in which to trace. There are also several configurable parameters that influence the cone tracing. We have \texttt{steps}, the maximum number of samples to take; \texttt{bias}, the initial offset from the starting position (in order to avoid self illumination); \texttt{coneAngle}, the angle of the cone; \texttt{coneHeight}, the starting height of the cone; and \texttt{lodOffset}, a constant offset used when determining the level of the radiance texture to sample from. Also, since the cone tracing is performed in texture space, a \texttt{scale} is applied to normalized direction vectors. For each step, the cone's radius is computed from the cone's height and angle. From this, we compute the level of detail to sample from. After getting the sample color and alpha value a forward blending scheme is used. Finally, the cone's height is increased for the next iteration of the loop. The complete shader code for cone tracing is shown in Listing~\ref{lst:vct}. The lighting contribution from the indirect light (both diffuse and specular) is displayed in Figure~\ref{fig:debugindirect} and the occlusion values are displayed in Figure~\ref{fig:debugocclusion}.
 
 \begin{lstlisting}[caption={Shader function for performing voxel cone tracing.},label={lst:vct}]
 vec4 traceCone(sampler3D voxelTexture, vec3 position, vec3 normal, vec3 direction, int steps, float bias, float coneAngle, float coneHeight, float lodOffset)
@@ -263,6 +323,27 @@ vec4 traceCone(sampler3D voxelTexture, vec3 position, vec3 normal, vec3 directio
 %     \end{algorithmic}
 % \end{algorithm}
 
+\begin{figure}[h!]
+\centering
+    \begin{subfigure}[t]{\textwidth}
+        \includegraphics[width=\textwidth]{debugIndirect_noOcclusion.png}
+        \caption{Diffuse indirect light}
+    \end{subfigure}
+    \begin{subfigure}[t]{\textwidth}
+        \includegraphics[width=\textwidth]{debugReflections.png}    % TODO multiplied by occlusion?
+        \caption{Specular indirect light}
+    \end{subfigure}
+    \caption{The diffuse and specular contributions from cone tracing (before multiplying by occlusion).}
+    \label{fig:debugindirect}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+    \includegraphics[width=\textwidth]{debugOcclusion.png}
+    \caption{Occlusion values resulting from voxel cone tracing. The occlusion is multiplied with the cone traced lighting in order to account for occlusion of nearby objects (i.e.\ voxel based ambient occlusion).}
+    \label{fig:debugocclusion}
+\end{figure}
+
 \section{Voxel Warping}
 % TODO deriving spline, why need constraints, increasing viewport resolution
 The goal of voxel warping is to vary the density of the voxel resolution according to some metric. In particular, this allows the voxel density to be higher near the camera and then smoothly fall off for objects further away.
@@ -282,13 +363,22 @@ Instead, we want to place a lower bound on $w'(x)$. The solution to this is to u
 % TODO imply that 0.5 is close to camera? idk
 % TODO go over how this doesnt mess up voxel cone tracing or filtering and stuff
 
+\subsection{Warp Textures}  % TODO ???
+
+\subsection{Perspective Warping with Tesselation}   % TODO ???
+
 % TODO do i need this?
-\section{Optimizations}
+\section{Miscellaneous}
 \subsection{Depth Prepass}
 With voxel cone tracing, each fragment shader invocation is quite expensive. If we have overlapping objects in the scene then fragments will be shaded for each pixel, but only one will be the final color. To ensure we only shade the final fragment, we have a prepass which rasterizes the scene and only writes the depth value. This operation is extremely quick. Now, the depth buffer contains only the depth of the fragment that will end up on the screen. When the full shading pass is performed all fragments that fail the depth test can be immediately discarded, avoiding the expensive voxel cone tracing.
 % TODO give before/after improvement
 
 \subsection{Compressed Textures with Pregenerated Mipmaps}
 % TODO ?
+
+\subsection{Temporal Filtering}     % TODO ???
+
+\subsection{Voxel Hole Filling}     % TODO ??? (radianceDilate,voxelizeDilate,voxelFillHoles)
+
 
 % TODO custom filtering, try raymarching optimizations from nvidia blog
