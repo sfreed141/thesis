@@ -76,7 +76,14 @@ While most graphics work follows the graphics pipeline, it is possible to use a 
 \subsection{Tesselation}
 An optional stage in the pipeline between vertex shading and geometry shading is tesselation. The goal of tesselation is to take a patch---a fixed number of vertices---and subdivide the patch into more vertices. The number of vertices generated from the subdivision is controlled either from a fixed constant (defined in the application) or from the optional \textbf{tesselation control} shader. The generated vertices are then passed through the \textbf{tesselation evaluation} shader, which performs vertex processing just like the vertex shader.
 
-\missingfigure{Show example of triangle being tesselated}
+A triangular patch (defined by three vertices) is subdivided into multiple subtriangles. There are four total tesselation levels: one which corresponds to the inner tesselation and three for the outer tesselation. Loosely speaking, the inner tesselation determines how many inner triangles are generated and the outer tesselation determines how many vertices are placed along each outer edge. See Figure~\ref{fig:tesselation} for an example.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=1.0]{openglwiki_tesselation.png}
+\caption{A triangle tesselated with an inner tesselation level of 5 and outer tesselation levels of 4, 1, and 6. The dashed lines show the new triangles generated from the original triangle. (image from of OpenGL Wiki~\cite{openglwiki_tesselation}).}
+\label{fig:tesselation}
+\end{figure}
 
 \subsection{Textures and Mipmapping}
 A texture in the most basic sense is a linear data buffer. In computer graphics, the most common texture type is a 2D texture where each \textbf{texel}---a single element of a texture---stores a color and opacity value, requiring four components---three for the RGB color and one for the opacity. However, 1D and 3D textures are also possible (and 3D textures are a core part of this thesis) as well as various data formats. Textures can also contain multiple \textbf{levels}, often used for mipmapping. OpenGL and GPUs have native support for working with multi-level textures and sampling from them appropriately.
@@ -161,57 +168,3 @@ The indirect lighting can be computed in an intuitive way using Monte Carlo rayt
 
 \subsection{Raymarching}
 Consider wanting to render the effects of participating media: some type of semi-transparent object, such as dust or a cloud. With raytracing, intersections occur at discrete points between the casted ray and the object it hits. Therefore straightforward raytracing will not work, as there is no single intersection when dealing with participating media. Raymarching is an extension of raytracing that involves sampling multiple points along the casted ray in defined intervals. The values sampled along the ray are accumulated and blended based on opacity.
-
-% TODO vct? or just cover in related works? (to cover vct need raytracing,raymarching, and mipmapping)
-
-\iffalse
-% old
-In order to render a scene we need some model of how light works. A physically accurate way to model light is with the concept of radiance. Radiance can be thought of as the radiant flux (the amount of light energy transferred per unit time) through some unit area. In other words, it is how much light is present at a given point and in which direction it is travelling. Spectral radiance is the same thing but incorporates the wavelength of the light as well. The rendering equation, which describes the radiance at a given point in space, was originally presented by Kajiya \cite{kajiya1986rendering}. The equation, with slightly more modern notation, is
-\begin{equation*}
-    L_o(\bm{x}, \omega_o, \lambda, t) = L_e(\bm{x}, \omega_o, \lambda, t) + \int_\Omega f_r(\bm{x}, \omega_i, \omega_o, \lambda, t)\ L_i(\bm{x}, \omega_i, \lambda, t)\ (\omega_i \cdot \bm{n})\ d\omega_i
-\end{equation*}
-
-where $\bm{x}$ is a point in space, $\omega_o$ is the direction of outgoing light, $\lambda$ is the wavelength of light, $t$ is time, $L_o$ is the total spectral radiance, $L_e$ is the emitted spectral radiance, $w_i$ is the direction of incoming light, $f_r$ is a bidirectional reflectance distribution function, $L_i$ is the incoming spectral radiance, $n$ is the surface normal at the point $\bm{x}$, and $\Omega$ is the unit hemisphere centered around $n$. Although it looks very complex, the result $L_o$ is essentially the light intensity at a given point when viewed from a particular angle, the term $L_e$ is the light emitted from the point towards the viewer, and the integral is calculating how much incoming light at a point is transferred towards the viewer. The dot product $(\omega_i \cdot \bm{n})$ attenuates the incoming light based on the angle between the incoming light and the normal.
-
-\begin{figure}[h]
-\centering
-\includegraphics[scale=1.0]{rendering_eq.png}
-\caption{Diagram representing the components of the rendering equation (image from \url{https://en.wikipedia.org/wiki/Rendering\_equation}).}
-\label{fig:renderingeq}
-\end{figure}
-
-Of course, in order to compute this we must at the very least discretize the problem. Furthermore, the complexity involved in calculating all of the integrals that would be needed to render a full scene as stated by the rendering equation is computationally infeasible. Thus we need some way to approximate this complete model of light.
-
-% TODO expand this, explain BRDF, Cook Torrance?
-
-\section{Global Illumination}
-To approximate the rendering equation it is helpful to divide light into two categories: direct and indirect light. Direct light for a point is calculated by iterating through all light sources in a scene and computing their contribution to the point. This is relatively easy and straightforward. Indirect lighting for a point is the light accumulated from non-light sources in the scene, like the ambient light that is bounced off of other surfaces.
-
-The term global illumination generally refers to a lighting model which attempts to accurately approximate indirect illumination. Approaches like having a constant ambient light amount (as is done in the classic Phong~\cite{phong1975illumination} lighting model) and using ambient occlusion techniques like SSAO and HBAO do try to emulate some of the effects of indirect light but do not really attempt to accomplish full global illumination. For our algorithm, some of the main visual qualities we consider necessary are color bleeding and specular reflections (see Figure~\ref{fig:giqualities}). Here we give an overview of some techniques used to achieve more accurate global illumination.
-
-\begin{figure}[h]
-\centering
-\makebox[\textwidth]{\includegraphics[width=\textwidth]{giqualities.png}}
-\caption{Specular reflections can be seen on the ground of the left picture. Color bleeding can be seen on the archways of the left picture and on the column of the right picture. Images from~\cite{crassin2011interactive}.}
-\label{fig:giqualities}
-\end{figure}
-
-% TODO raytracing and static lighting methods should probably be cut from background (not focus of this thesis, explain in intro)
-\subsection{Monte Carlo Raytracing}
-Raytracing is a common rendering technique which involves casting rays into a scene and determining color based on where the rays intersect. When a ray hits some geometry, direct lighting can be calculated by seeing if a ray from a light can `see' the intersection point. For indirect lighting, more work must be done. Monte Carlo Raytracing approximates the indirect light at a point by directly trying to approximate the surface integral over a hemisphere (as done in the rendering equation). This is done by only sending out a finite number of sampling rays to keep computation of the surface integral reasonable. The results, while impressive, still do not lend themselves well to real-time applications. Even with variations and improvements on the idea of raytracing, such as photon mapping, interactive frame rates are not achieved.
-
-\begin{figure}[h]
-\centering
-\includegraphics[scale=0.5]{sampling.png}
-\caption{Sampling rays used to approximate an integral as would be done using Monte Carlo integration (image from \url{https://computergraphics.stackexchange.com/questions/4979}).}
-\label{fig:sampling}
-\end{figure}
-
-\subsection{Baked Lighting}
-Another approach to global illumination is to approximate the radiance in a scene using some spatial representation. Then, when computing the lighting the radiance can be looked up and used to achieve global illumination. Baked lighting follows this approach by pre-processing a scene's geometry and light sources in order to compute the radiance in a scene. During run time, the radiance can be looked up quickly. The clear and major drawback of this method is it is completely static: if a light or the geometry moves the radiance map created is no longer valid. Still, it is a great way to enhance visual quality when working with static lights and a relatively static scene.
-
-\subsection{Voxel Cone Tracing}
-The focus of much research, as well as this thesis, is on computing real-time global illumination with support for dynamic objects and lighting. Voxel cone tracing~\cite{crassin2011interactive} is a relatively recent method for computing this that has gained some popularity, with variations being implemented by NVIDIA~\cite{nvidiavxgi} (which is incorporated into the Unreal Engine) and some games~\cite{mclaren2016cascaded}.
-
-The general voxel cone tracing algorithm relies on approximating the scene's radiance using a voxelized spatial data structure, which then upscales (filters) the radiance in order to obtain adequate performance. To perform the actual lighting calculation, the radiance is sampled from the spatial data structure in such a way to minimize the amount of sampling without sacrificing quality. More details on the basic voxel cone tracing algorithm will be provided in the Implementation chapter.
-\fi

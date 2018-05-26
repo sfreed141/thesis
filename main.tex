@@ -3,7 +3,7 @@
 \usepackage{etex}
 \usepackage[morefloats=125]{morefloats}
 \usepackage[hyphens]{url}
-\usepackage{subfig}
+% \usepackage{subfig}
 \usepackage{graphicx}
 \usepackage{tabularx}
 \usepackage{amssymb}
@@ -26,8 +26,18 @@
 \usepackage[breaklinks=true,hidelinks,pdfusetitle]{hyperref}
 \usepackage{cleveref}
 \usepackage{ifthen}
-\usepackage{lmodern,microtype,enumitem,todonotes,booktabs,multirow}
+\usepackage{lmodern,microtype,enumitem,todonotes,booktabs,multirow,subcaption}
 % \usepackage{minted}
+
+\lstdefinestyle{default}{
+  basicstyle=\footnotesize\ttfamily,
+  breaklines=true,
+  language=C,
+  captionpos=b,
+  numbers=left,
+  frame=single
+}
+\lstset{style=default}
 
 \graphicspath{ {figures/} }
 
@@ -104,6 +114,8 @@
 \listoftables
 
 \listoffigures
+
+\lstlistoflistings
 
 % Add CHAPTER into table of contents.
 \addtocontents{toc}{%

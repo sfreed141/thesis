@@ -18,6 +18,8 @@ The goal of voxelization is to create a sparse 3D representation of the geometry
 
 The extents of our voxelization volume---the area in world space that will end up inside the voxel textures---is also configurable and by default is set to enclose the entire scene. This volume can be static or can track the camera (with the camera being at the center of the textures). In addition, to prevent some issues with temporal artifacts, the voxel textures are snapped to a discrete grid corresponding to the size of each voxel cell in world space.
 
+We present two different approaches for scene voxelization: one utilizing hardware rasterization and the other hardware tesselation.
+
 \subsection{Rasterization-Based Approach to Voxelization}
 % TODO scene extents, midpoint and tracking, computing voxel texture coordinates, choosing axis, diagram of scene extents and converting to NDC
 % TODO cite GPU Pro 4 and imageAtomicMax
@@ -62,16 +64,26 @@ As mentioned previously, we need conservative rasterization to minimize holes an
 % TODO should implement the geometry shader based and then compare performance quality of all 3 (might need to do that indirect rendering thing too...)
 % TODO go through shaders. NV_conservative_raster, MSAA based (CITE THIS), image of MSAA and the sampling, one fragment for msaa
 
+% Camera Position (8.0, 2.7, -1.3), Direction (-1.0, -0.0, 0.3)
+
 \missingfigure{With/without conservative rasterization. MSAA vs NV?}
 
 \subsection{Tesselation-Based Approach to Voxelization}
 Our new method for voxelization relies completely on hardware tesselation: no rasterization required. Instead of generating fragments for each voxel we instead attempt to generate vertices for each voxel. One benefit of this method is the mapping from vertex to voxel position is fairly straightforward and does not require multiple projection matrices like in the rasterization-based approach.
 
-The core part of this approach is determining the appropriate tesselation level for a given triangle. Recall that this step is the responsibility of the tesselation control shader. Afterwards, tesselation primitive generation produces the tesselated vertices and provides them to the tesselation evaluation shader, where we compute each vertex's position in the voxel texture and store the vertex's color.
+The core part of this approach is determining the appropriate tesselation level for a given triangle. Recall that this step is the responsibility of the tesselation control shader. Afterwards, tessel`ation primitive generation produces the tesselated vertices and provides them to the tesselation evaluation shader, where we compute each vertex's position in the voxel texture and store the vertex's color.
 
 % TODO determining tesselation level and discarding
+The desired level of tesselation will produce one vertex for each voxel the triangle covers. Therefore, for a particular triangle, the tesselation level is determined based on the triangle's size in world space. Recall that for triangular tesselation patches there are four values: three outer tesselation levels (one for each edge) and one inner tesselation level. To determine the outer tesselation level for an edge $E$, we effectively determine how many voxels $E$ passes through (accounting for the direction of $E$): $\displaystyle outerLevel = \frac{|E|}{(\frac{E}{||E||} \cdot voxelSize)}$. To determine the inner tesselation level, we find the maximum altitude of the triangle and then perform a similar computation as with the outer level. With $a$, $b$, and $c$ being the lengths of the triangle edges, the altitude from a side $x \in \{a, b, c\}$ is given by
+\[
+    h_x = \frac{2 \sqrt{s(s-a)(s-b)(s-c)}}{x}
+\]
+where $s = (a + b + c) / 2$ is the semiperimeter and the square root term is the triangle's area using Heron's Formula. The maximum altitude is then $h_{max} = \max(h_a, h_b, h_c)$. Finally, we have $innerLevel = h_{max} / voxelSize$.
 
 % TODO calculating coordinates and inserting
+After specifying the tesselation levels in the tesselation control shader, tesselation primitive generation produces the vertices that correspond to the voxels. In the tesselation evaluation shader the vertex position (in world space) is used to determine the final voxel position and is written out to the voxel texture.
+
+An important consideration for this method is the maximum tesselation level supported by the hardware. For large triangles it is possible the tesselation will not produce a solid voxelization. A simple way to address this issue is to break large triangles into smaller ones when loading the mesh. Another consideration is for small triangles where all vertices occupy a single voxel. To reduce the number of writes to the voxel texture the contributions of these vertices can be consolidated in the shader into a single operation.
 
 \missingfigure{Tesselated voxels}
 
@@ -133,44 +145,70 @@ The other benefit to manually filtering is different methods can be used. For ex
 
 \section{Shading}
 % TODO do i need to show code/go step by step here?
-The final shading step takes all of the previously generated information and renders the scene. Direct lighting is computed from multiple lights and uses the classic Blinn-Phong shading model~\cite{Phong:1975:ICG:360825.360839} or the physically based Cook-Torrance shading model~\cite{Cook:1982:RMC:357290.357293}\footnote{We use the Smith Schlick-GGX Geometric Attenuation function, Trowbridge-Reitz GGX Normal Distribution function, and Schlick's approximation for the Fresnel function.}. Indirect lighting is computed using voxel cone tracing. Normal mapping (similar to bump mapping~\cite{Blinn:1978:SWS:965139.507101}), shadow mapping, and post processing effects also occur here.
+The final shading step takes all of the previously generated information and renders the scene. Direct lighting is computed from multiple lights and uses the physically based Cook-Torrance shading model~\cite{Cook:1982:RMC:357290.357293}. The classic Blinn-Phong shading model~\cite{Phong:1975:ICG:360825.360839} is also supported. Indirect lighting is computed using voxel cone tracing. Normal mapping (similar to bump mapping~\cite{Blinn:1978:SWS:965139.507101}), shadow mapping, and post processing effects also occur here. A complete outline of computing the final shaded color is shown in Algorithm~\ref{alg:finalshading}.
 
 % TODO section  on normal mapping, shadow mapping, postprocessing?  or maybe in background?
 
 % TODO explain UBO offsets and such? (also should this be in background?)
 Two important inputs for the fragment shader are material information and light information. The material information for each fragment is provided in a struct \texttt{Material}, uploaded as a uniform buffer object, and contains color and texture information. Lights are stored as an array of struct \texttt{Light}s and contain information associated with them such as light type (e.g.\ directional or point light), position, and color. The array is uploaded as a shader storage buffer object, which allows the array to have a dynamic size queryable at shader runtime.
 
+\begin{algorithm}
+    \caption{Final Shading (performed on each rasterized fragment)}
+    \label{alg:finalshading}
+    \begin{algorithmic}
+        \State {$directLighting = 0$}
+        \For {each light in the scene}
+            \State {$directLighting = directLighting + \mathrm{computeDirect}()$} \Comment{Diffuse and specular lighting}
+            \If {in shadow}
+                \State {$shadowFactor = \mathrm{computeShadowAmount}()$}
+                \State {$directLighting = shadowFactor * directLighting$}
+            \EndIf
+        \EndFor
+        \State {}
+
+        \State {$indirectLighting = 0$}
+        \For {each diffuse cone}
+            \State {Transform cone direction to world space} \Comment{Using TBN matrix}
+            \State {$color, occlusion = \mathrm{coneTrace}()$} \Comment{Perform cone tracing, resulting in a color and occlusion factor}
+            \State {$indirectLighting = indirectLighting + occlusion * color$}
+        \EndFor
+        \State {}
+
+        \State {$reflectedDirection = \mathrm{reflect}()$} \Comment {Compute direction of reflected ray}
+        \State {$reflectColor, reflectOcclusion = \mathrm{coneTrace}()$}
+        \State {$indirectLighting = indirectLighting + reflectOcclusion * reflectColor$}
+        \State {}
+
+        \State {$finalColor = directLighting + indirectLighting$}
+        \State {$finalColor = finalColor / (finalColor + 1)$} \Comment{Tone map}
+        \State {$finalColor = finalColor^{\frac{1}{2.2}}$} \Comment{Gamma correction}
+    \end{algorithmic}
+\end{algorithm}
+
 \missingfigure{Final rendered image with each individual contribution (direct+ diffuse indirect + specular indirect)}
 
 \subsection{Direct Lighting}
-We calculate direct lighting by iterating over each light source in the scene and summing all lighting contributions. We compute diffuse and specular lighting using the Blinn-Phong shading model as follows:
-\begin{description}
-    \item[diffuse:] \texttt{material.diffuseColor * light.color * max(0, dot(N, L))}
-    \item[specular:] \texttt{material.specularColor * light.color * pow(max(0, dot(H, L)), shininess)}
-\end{description}
-% TODO should I expand on this in detail?
-
-\begin{algorithm}
-    \caption{Direct Lighting (performed on each rasterized fragment)}
-    \label{alg:directlighting}
-    \begin{algorithmic}
-        \State {Fetch material properties from textures}
-        \State {$lighting = 0$}
-        \For {each light in the scene}
-            \State {$lighting = lighting + \mathrm{computeDiffuse}()$}
-
-            \If {in shadow}
-                \State {$shadowFactor = \mathrm{computeShadowAmount}()$}
-                \State {$lighting = shadowFactor * lighting$}
-            \EndIf
-        \EndFor
-    \end{algorithmic}
-\end{algorithm}
+We calculate direct lighting by iterating over each light source in the scene and summing all lighting contributions. We compute diffuse and specular lighting according to the Cook-Torrance shading model (without the ambient term, which is computed by the voxel cone tracing):
+\[
+    r = \sum_{i=0}^{n} l_c * (\bm{n} \cdot \bm{l}) * (d * r_d + s * r_s)
+\]
+where $r$ is the resulting color, $n$ is the number of lights, $l_c$ is the light color, $\bm{n}$ is the surface normal, $\bm{l}$ is the light vector, $d$ and $s$ are scaling factors, and $r_d$ and $r_s$ are the diffuse and specular components (the BRDFs). The diffuse component $r_d$ is calculated with the Lambertian model for diffuse light, which is simply $c / \pi$, where $c$ is the material's surface color. The specular component is
+\[
+    r_s = \frac{DGF}{\pi (\bm{n} \cdot \bm{l}) (\bm{n} \cdot \bm{v})}
+\]
+where $D$ is a Normal Distribution Function, $G$ is the Geometric Attenuation Fucntion, $F$ is the Fresnel term, $\bm{n}$ is the surface normal, $\bm{l}$ is the light vector, and $\bm{v}$ is the view vector. The Cook-Torrance model allows for different choices of $D$, $G$, and $F$. Our implementation uses the Trowbridge-Reitz GGX Normal Distribution Function, Smith Schlick-GGX Geometric Attenuation Function, and Schlick's approximation for the Fresnel term\footnote{These choices for $D$, $G$, and $F$ are the same as in Unreal Engine 4~\cite{karis2013real}.}:
+\begin{align*}
+    D(\bm{n}, \bm{h}, \alpha) &= \frac{\alpha^2}{\pi ((\bm{n} \cdot \bm{h})^2 (\alpha^2 - 1) + 1)^2} \\
+    G1(\bm{n}, \bm{v}, k) &= \frac{\bm{n} \cdot \bm{v}}{(\bm{n} \cdot \bm{v}) (1 - k) + k} \\
+    G(\bm{n}, \bm{v}, \bm{l}, \bm{k}) &= G1(\bm{n}, \bm{v}, k) G1(\bm{n}, \bm{l}, k) \\
+    F &= F0 + (1 - F0) (1 - \cos \theta)^5 \\
+\end{align*}
+where $\alpha$ is material roughness, $\bm{h}$ is the half vector, $k = \frac{(\alpha + 1)^2}{8}$, $\theta$ is the angle between $\bm{h}$ and $\bm{v}$, and F0, the surface reflection at zero incidence, is 0.04 for dielectrics and the surface albedo for metals.
 
 % TODO definitely gonna want some pictures
 % TODO present integral as going backwards? (want integral -> inf many rays -> break into discrete chunks w/ weights)
 \subsection{Indirect Lighting (Voxel Cone Tracing)}
-To compute the indirect lighting at a given point, we perform the voxel cone tracing step. Recall that to compute indirect light we are effectively approximating a surface integral over a hemisphere. To do this perfectly would require infinitely many cones. Instead, we use six cones: five for diffuse light and one for a specular highlight.
+To compute the indirect lighting at a given point, we perform the voxel cone tracing step. Recall that to compute indirect light we are effectively approximating a surface integral over a hemisphere. To do this perfectly would require infinitely many cones. Instead, we use six cones: five for diffuse light and one for a specular highlight\footnote{The number of cones and their associated directions and angles are determined experimentally.}.
 
 % TODO should either explain vct in related works or right here before detailing cone properties
 % TODO multiple cones + directions, weights and math supporting it
@@ -178,7 +216,6 @@ To compute the indirect lighting at a given point, we perform the voxel cone tra
 % TODO Gaussian distribution for cone weights
 For the diffuse cones we chose an aperture of $45^\circ$ with one cone oriented in the direction of the surface normal and the others evenly distributed around the normal and tilted up at an angle of $45^\circ$. We also assign weights to each cone based on a uniform distribution. Note that in order to compute the orientation of each cone in world space we must multiply the chosen cone directions by the TBN matrix, since the cone directions are defined in tangent space. To get the final diffuse contribution, the cone tracing is performed for each cone and the values are weighted and summed appropriately.
 
-% TODO use Simon's value to determine aperture?
 % TODO make sure to define these somewhere
 The specular cone is oriented in the direction of the reflection vector, which is calculated as \texttt{-V - 2 * dot(N, -V) * N}, or by using the GLSL function \texttt{reflect()}. The aperture is derived from the material's roughness according to the following formula (determined experimentally): $0.1 * \pi * roughness$.
 
@@ -191,40 +228,40 @@ The radiance texture is sampled at varying levels of detail in order to approxim
 Combining this all together, we sample from the radiance texture at a level of detail related to the height of the cone at our sampling point. In this way, samples close to the start of the cone come from higher detailed data and samples far from the start come from lower detailed data. This allows the voxel cone tracing to gather both high frequency and low frequency details of the indirect light.
 
 % TODO go over all the vct settings
-The implementation of a single cone tracing instance is done entirely within a fragment shader. The main inputs are the radiance texture, the position to start tracing from, and the direction in which to trace. There are also several configurable parameters that influence the cone tracing. We have \texttt{steps}, the maximum number of samples to take; \texttt{bias}, the initial offset from the starting position (in order to avoid self illumination); \texttt{coneAngle}, the angle of the cone; \texttt{coneHeight}, the starting height of the cone; and \texttt{lodOffset}, a constant offset used when determining the level of the radiance texture to sample from. % TODO finish explaining the vct loop
+The implementation of a single cone tracing instance is done entirely within a fragment shader. The main inputs are the radiance texture, the position to start tracing from, and the direction in which to trace. There are also several configurable parameters that influence the cone tracing. We have \texttt{steps}, the maximum number of samples to take; \texttt{bias}, the initial offset from the starting position (in order to avoid self illumination); \texttt{coneAngle}, the angle of the cone; \texttt{coneHeight}, the starting height of the cone; and \texttt{lodOffset}, a constant offset used when determining the level of the radiance texture to sample from. Also, since the cone tracing is performed in texture space, a \texttt{scale} is applied to normalized direction vectors. For each step, the cone's radius is computed from the cone's height and angle. From this, we compute the level of detail to sample from. After getting the sample color and alpha value a forward blending scheme is used. Finally, the cone's height is increased for the next iteration of the loop. The complete shader code for cone tracing is shown in Listing~\ref{lst:vct}.
 
-% \begin{lstlisting}[breaklines=true,language=C,basicstyle=\footnotesize\ttfamily]
-% vec4 traceCone(sampler3D voxelTexture, vec3 position, vec3 normal, vec3 direction, int steps, float bias, float coneAngle, float coneHeight, float lodOffset) {
-%     vec3 color = vec3(0);
-%     float alpha = 0;
+\begin{lstlisting}[caption={Shader function for performing voxel cone tracing.},label={lst:vct}]
+vec4 traceCone(sampler3D voxelTexture, vec3 position, vec3 normal, vec3 direction, int steps, float bias, float coneAngle, float coneHeight, float lodOffset)
+{
+    vec3 color = vec3(0);
+    float alpha = 0;
 
-%     float scale = 1.0 / voxelDim;
-%     vec3 start = position + bias * normal * scale;
-%     for (int i = 0; i < steps && alpha < 0.95; i++) {
-%         float coneRadius = coneHeight * tan(coneAngle / 2.0);
-%         float lod = log2(max(1.0, 2 * coneRadius));
-%         vec3 samplePosition = start + coneHeight * direction * scale;
-%         if (any(notEqual(samplePosition, clamp(samplePosition, 0, 1)))) break;
+    float scale = 1.0 / voxelDim;
+    vec3 start = position + bias * normal * scale;
+    for (int i = 0; i < steps && alpha < 0.95; i++) {
+        float coneRadius = coneHeight * tan(coneAngle / 2.0);
+        float lod = log2(max(1.0, 2 * coneRadius));
+        vec3 samplePosition = start + coneHeight * direction * scale;
 
-%         vec4 sampleColor = textureLod(voxelTexture, samplePosition, lod + lodOffset);
-%         float a = 1 - alpha;
-%         color += sampleColor.rgb * a;
-%         alpha += a * sampleColor.a;
-%         coneHeight += coneRadius;
-%     }
+        vec4 sampleColor = textureLod(voxelTexture, samplePosition, lod + lodOffset);
+        float a = 1 - alpha;
+        color += sampleColor.rgb * a;
+        alpha += a * sampleColor.a;
+        coneHeight += coneRadius;
+    }
 
-%     return vec4(color, alpha);
-% }
-% \end{lstlisting}
+    return vec4(color, alpha);
+}
+\end{lstlisting}
 
-\begin{algorithm}
-    \caption{Voxel Cone Tracing}
-    \label{alg:voxelconetracing}
-    \begin{algorithmic}
-        \Procedure{TODO}{}
-        \EndProcedure
-    \end{algorithmic}
-\end{algorithm}
+% \begin{algorithm}
+%     \caption{Voxel Cone Tracing}
+%     \label{alg:voxelconetracing}
+%     \begin{algorithmic}
+%         \Procedure{TODO}{}
+%         \EndProcedure
+%     \end{algorithmic}
+% \end{algorithm}
 
 \section{Voxel Warping}
 % TODO deriving spline, why need constraints, increasing viewport resolution

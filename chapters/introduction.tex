@@ -5,26 +5,32 @@ Computer graphics is the task of taking a virtual description of a scene, compos
 
 Of particular importance in computer graphics are real-time applications, where images, or frames, must be produced at an interactive speed, such as video games. Typically, the lower bound for this is considered 30 frames per second, or about 33 milliseconds per frame (although 60 fps is generally considered a better target). To meet this goal, researchers and engineers have designed many algorithms and techniques.
 % TODO reword
-In this work, we implement and extend an algorithm to accomplish fast and accurate lighting for fully dynamic scenes.
+In this work, we implement and extend an algorithm to accomplish fast and accurate lighting for fully dynamic scenes. An example of our global illumination algorithm is shown in Figure~\ref{fig:introduction_gi}.
 
 % TODO seems like a good thing to note (it's very engineer-y)
 It is important to keep in mind that most lighting algorithms have many tradeoffs and are adapted towards specific use cases. A complete lighting system may also combine many different lighting algorithms in order to achieve the desired balance between quality, performance, and ease of use.
 
-% TODO example of global illumination (with/without). Possibly from my program.
-\missingfigure{Scene rendered with/without global illumination.}
-% \begin{figure}[h]
-% \centering
-% \includegraphics[scale=1.0]{TODO}
-% \caption{A scene---describing information like light sources, materials, and geometry---is rendered by computing a color for each pixel of a screen. The image on the left is rendered with global illumination whereas the image on the right is not.}
-% \label{fig:introduction_gi}
-% \end{figure}
+\begin{figure}[h]
+\centering
+    \begin{subfigure}[t]{0.4\textwidth}
+        \includegraphics[width=\textwidth]{gi_on.png}
+        \caption{Global illumination}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[t]{0.4\textwidth}
+        \includegraphics[width=\textwidth]{gi_off.png}
+        \caption{No global illumination}
+    \end{subfigure}
+    \caption{A scene---describing information like light sources, materials, and geometry---is rendered by computing a color for each pixel of a screen. The image on the left is rendered with global illumination whereas the image on the right uses a constant ambient term for indirect lighting.}
+    \label{fig:introduction_gi}
+\end{figure}
 
 \section{Real-Time Global Illumination}
 In general, lighting at a given point is a combination of direct and indrect light. Direct light is light accumulated directly from a light source, whereas indirect light is the light that comes from other non-light sources in the scene (e.g.\ the light that has `bounced' off of objects in the scene).
 
 % TODO ambient occlusion: footnote with citations for a few types (SSAO, HBAO, etc.)
 % TODO cite specific sections of book howdo?
-In the beginnings of computer graphics very simple lighting models were used in order to maintain real-time performance. While the direct light was feasible to compute in real-time (albeit with limitations on number of lights and other optimizations), indirect lighting was often faked with a simple constant contribution. As hardware limitations and algorithms improved, more advanced techniques were developed and approximating the indirect light became more feasible. Two methods, ambient occlusion~\cite{bunnell2005dynamic,moller2008rtr} and baked lighting~\cite{Sloan:2002:PRT:566654.566612,moller2008rtr}, became standard ways of introducing simple global illumination, the term given to techniques that improved indirect lighting. However both these methods have drawbacks. Ambient occlusion, which approximates the effect of light occlusion by nearby objects, provides a great improvement over the constant ambient term used previously but does not accurately simulate the indirect light in its entirety. Thus it is only `partial' global illumination. Baked lighting involves pre-computing light behavior of a scene prior to runtime and then utilizing the precomputation to enable real-time realistic lighting. The drawback here is only static objects can have their light baked---any dynamic objects or lights in the scene are not accounted for.
+In the beginnings of computer graphics simple lighting models were used in order to maintain real-time performance. While the direct light was feasible to compute in real-time (albeit with limitations on number of lights and other optimizations), indirect lighting was often faked with a simple constant contribution. As hardware limitations and algorithms improved, more advanced techniques were developed and approximating the indirect light became more feasible. Two methods, ambient occlusion~\cite{bunnell2005dynamic,moller2008rtr} and baked lighting~\cite{Sloan:2002:PRT:566654.566612,moller2008rtr}, became standard ways of introducing simple global illumination, the term given to techniques that improved indirect lighting. However both these methods have drawbacks. Ambient occlusion, which approximates the effect of light occlusion by nearby objects, provides a great improvement over the constant ambient term used previously but does not accurately simulate the indirect light in its entirety. Thus it is only `partial' global illumination. Baked lighting involves pre-computing light behavior of a scene prior to runtime and then utilizing the precomputation to enable real-time realistic lighting. The drawback here is only static objects can have their light baked---any dynamic objects or lights in the scene are not accounted for.
 
 % TODO reword
 Full global illumination algorithms attempt to provide a complete approximation of indirect light. Some, like baked lighting, only work for static scenes. For our work, however, we are interested in dynamic global illumination. In other words, our goal is full global illumination that can be performed completely for each frame. Any changes in the scene---object movement, light movement or changes in intensity---will be accounted for.
