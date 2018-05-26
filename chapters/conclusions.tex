@@ -14,5 +14,10 @@ Although voxel warping does help more efficiently use the space within a 3D text
 
 Another potential area of improvement is storing radiance differently. For example, a spherical harmonics representation or ambient dice~\cite{iwanicki2017ambient} representation could be used. This would have impacts on both lighting quality, performance, and memory usage.
 
+% Implement the other voxelization and compare
+% \cite{Fei:2012:PV:2305276.2305280} and \cite{eisemann2008single}
+
 % TODO injecting multiple lights. can expand more on above stuff too
-% other: stochastic transparency (or other way to handle transparency), vulkan, forward+, environment map (could inject into outer edges of voxels?), anisotropic voxels, second bounce by cone tracing intermediate radiance texture, emissive light, 
+% other: stochastic transparency (or other way to handle transparency), vulkan, forward+, environment map (could inject into outer edges of voxels?), anisotropic voxels, second bounce by cone tracing intermediate radiance texture, emissive light,
+
+% Various optimizations: pack data, write occupancy directly to radiance texture so no copy

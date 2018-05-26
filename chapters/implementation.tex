@@ -53,6 +53,7 @@ Starting in the vertex shader, the only operation performed is transforming the 
 
 However there is still one more issue: multiple voxel fragments can be mapped to the same cell in the voxel textures. Without any synchronization, the final voxel values are not deterministic and can result in temporal artifacts. To solve this, we average the resulting color value using atomic operations\footnote{Other approaches to this problem (with various tradeoffs) can be used (Doghramachi uses an atomic max operation on a custom defined metric in order to avoid needing to perform an average~\cite{doghramachi2013rasterized}). These are generally used to combat performance issues or hardware limitations.}.
 % TODO should explain rgba8 + faking atomic avg vs rgba16f + atomicAdd + compute shader
+% TODO 'we implemented both atomicavg and atomicmax and prefer atomicmax for its simplicity, greater reliability, and negligible difference in lighting'
 
 \begin{figure}[h]
 \centering
@@ -89,7 +90,7 @@ As mentioned previously, we need conservative rasterization to minimize holes an
 \end{figure}
 
 \subsection{Tesselation-Based Approach to Voxelization}
-Our new method for voxelization relies completely on hardware tesselation: no rasterization required. Instead of generating fragments for each voxel we instead attempt to generate vertices for each voxel. One benefit of this method is the mapping from vertex to voxel position is fairly straightforward and does not require multiple projection matrices like in the rasterization-based approach.
+The other method for voxelization relies completely on hardware tesselation: no rasterization required. Instead of generating fragments for each voxel we instead attempt to generate vertices for each voxel. One benefit of this method is the mapping from vertex to voxel position is fairly straightforward and does not require multiple projection matrices like in the rasterization-based approach. Fei et al.~\cite{Fei:2012:PV:2305276.2305280} also developed an algorithm similar to ours using tesselation.
 
 The core part of this approach is determining the appropriate tesselation level for a given triangle. Recall that this step is the responsibility of the tesselation control shader. Afterwards, tesselation primitive generation produces the tesselated vertices and provides them to the tesselation evaluation shader, where we compute each vertex's position in the voxel texture and store the vertex's color. The final voxelized scene is shown in Figure~\ref{fig:tesselatedvoxels}.
 

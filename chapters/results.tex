@@ -13,36 +13,75 @@ The model used in the test scenes is the Crytek Sponza scene. The textures from 
 
 To measure performance timings for each render pass we make use of OpenGL timer queries using the \verb#GL_TIME_ELAPSED# query type. The results of the query object are double buffered to ensure introducing the timer query does not affect the total render time.
 
-\section{Performance}
+Unless otherwise mentioned, voxel resolutions are 256x256x256 with 6 mipmap levels.
+
+\section{Evaluation}
+In the following sections we evaluate various aspects of our work. First, we discuss the global illumination algorithm as a whole. Second, we compare the rasterization-based and tesselation-based voxelization algorithms. Lastly, we provide the results of our voxel warping and some insights on future improvements.
+
+\subsection{Global Illumination}
+Table~\ref{tbl:renderpasstiming} shows timing results from the complete global illumination algorithm. We test the algorithm with different screen resolutions and voxel grid resolutions. Recall that a minimum goal for real-time is 30 frames per second and a target is 60 frames per second, which correspond to individual frame times of 33.3ms and 16.7ms, respectively. We see that the total frame time always meets the goal of 60 frames per second.
+
+The data shows that shadowmap creation and radiance injection was independent of screen resolution and voxel resolution\footnote{As expected, since the main factor for both of these render passes is the size of the shadowmap, which remained constant at 4096x4096.}. The voxelization and radiance filtering steps both only depended on voxel grid resolution. The depth prepass also only varied with respect to screen resolution. The final shading predictably depended on both voxel grid resolution and screen resolution. However, larger voxel grid resolutions did not affect the final shading times by much at a given screen resolution, with approximately a 1.5ms difference between using a voxel resolution of 64 versus 256.
 
 \begin{table}[H]
 \centering
-\begin{tabular}{ll}
+\begin{tabular}{l ccc ccc ccc}
 \toprule
-Render Pass & Render Pass Time (ms) \\
+Render Pass & \multicolumn{9}{c}{Render Pass Time (ms)} \\
+& \multicolumn{3}{c}{1280x720} & \multicolumn{3}{c}{1600x900} & \multicolumn{3}{c}{1920x1080} \\
+& 64 & 128 & 256 & 64 & 128 & 256 & 64 & 128 & 256 \\
 \midrule
-Voxelize                & 0.0\\
-Radiance injection      & 0.0\\
-Radiance Filtering      & 0.0\\
-Depth Prepass           & 0.0\\
-Final Shading           & 0.0\\
+Voxelize           & 0.90 & 1.13 & 2.40  & 0.70 & 1.12 & 2.39  & 0.72 & 1.15 & 2.41\\
+Shadowmap          & 0.69 & 0.69 & 0.69  & 0.69 & 0.69 & 0.69  & 0.68 & 0.68 & 0.69\\
+Radiance Injection & 0.92 & 0.92 & 0.93  & 0.92 & 0.92 & 0.93  & 0.92 & 0.92 & 0.93\\
+Radiance Filtering & 0.04 & 0.10 & 0.55  & 0.05 & 0.10 & 0.56  & 0.04 & 0.10 & 0.55\\
+Depth Prepass      & 0.20 & 0.20 & 0.20  & 0.25 & 0.26 & 0.25  & 0.31 & 0.31 & 0.36\\
+Final Shading      & 3.89 & 4.81 & 5.32  & 5.98 & 6.42 & 7.10  & 8.23 & 9.40 & 9.75\\
 \midrule
-Total                   & 0.0\\
+Total              & 7.02 & 8.21 & 11.12  & 9.46 & 10.15 & 13.43  & 11.23 & 12.83 & 16.31\\
 \bottomrule
 \end{tabular}
-\caption{Times measured for each render pass.}
+\caption{Times measured for each render pass for various screen resolutions and voxel grid resolutions. The total timer also accounts for any other operations performed within each frame (i.e.\ the sum of the render pass times is not necessarily the complete time for an entire frame). Voxelization is done using the tesselation-based approach.}
 \label{tbl:renderpasstiming}
 \end{table}
+
+\subsection{Tesselated Voxelization}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\multirow{2}{*}{Voxel Grid Size} & \multicolumn{2}{c}{Voxelization Time (ms)} \\
+& Rasterization-Based & Tesselation-Based \\
+\midrule
+64x64x64        & 0.53 & 0.70\\
+128x128x128     & 0.85 & 1.12\\
+256x256x256     & 1.91 & 2.35\\
+\bottomrule
+\end{tabular}
+\caption{Time spent voxelizing the scene with varying voxel grid resolutions. For the rasterization-based approach the MSAA method of conservative rasterization is used.}
+\label{tbl:voxelizationtiming}
+\end{table}
+
+\subsection{Voxel Warping}
+
+
+\subsection{Integration of Voxel Cone Tracing into Existing Engines}
+
+% atomicMax vs atomicAvg?
+% TODO shadowmap vs RSM, glGenMipmap vs compute
+% TODO screenshots with different voxel resolutions? also with timings for everything?
+
 
 % TODO independent variables for tables? screen resolution, voxel dim, #cones, with/without warping
 % TODO and/or graphs
 
+% TODO "We notice that cone tracing itself is largely independent of voxel grid size. Primarily, voxel grid size affects voxelization the most and mipmapping (transferVoxels???) (the big impact of grid sizes is memory usage). The cone tracing is mostly affected by screen resolution. Possible future work could be tracing at lower resolutions and upsampling or assigning more or less cone tracing based on distance to camera/size in screen space or whatever
+% TODO (intro/contributions?) provide platform for future research on voxelization and cone tracing (and gi in general)
+% TODO should try optimizing a bit with geometry shader + maybe fragment shader
+
 % TODO memory usage
 
-% TODO performance comparison with/without warping
-
-\section{Quality}
-% TODO comparison of warped quality with no warped and related work?
 
 \begin{itemize}
     \item Test setup
