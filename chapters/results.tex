@@ -1,4 +1,4 @@
-\chapter{Results}
+\chapter{Results and Discussion}
 
 Here we examine both the performance and visual quality of our global illumination algorithm. The primary means of evaluating performance is based on GPU memory usage and frame time. The times of each contributing render pass are also recorded. Evaluating visual quality is based largely on whether the lighting appears smooth and believable with a minimal amount of noise and artifacts.
 
@@ -15,7 +15,7 @@ To measure performance timings for each render pass we make use of OpenGL timer 
 
 Unless otherwise mentioned, voxel resolutions are 256x256x256 with 6 mipmap levels.
 
-\section{Evaluation}
+\section{Analysis}
 In the following sections we evaluate various aspects of our work. First, we discuss the global illumination algorithm as a whole. Second, we compare the rasterization-based and tesselation-based voxelization algorithms. Lastly, we provide the results of our voxel warping and some insights on future improvements.
 
 \subsection{Global Illumination}
@@ -46,6 +46,24 @@ Total              & 7.02 & 8.21 & 11.12  & 9.46 & 10.15 & 13.43  & 11.23 & 12.8
 \end{table}
 
 \subsection{Tesselated Voxelization}
+In terms of both performance and visual quality both voxelization methods are very similar. Voxelization times for each method are shown in Table~\ref{tbl:voxelizationtiming}, where we see the tesselation-based voxelization is slightly slower than the rasterization-based approach\footnote{However both implementations were not heavily optimized.}. Figure~\ref{fig:results_voxelization} compares the final rendered scene with both voxelization methods. The differences are minor.
+
+Ultimately, both voxelization methods are sufficient for real-time global illumination. The (unoptimized) tesselation-based approach is slightly easier to implement and debug\footnote{Since the voxels are written in the tesselation evaluation stage, it is simple to add a geometry shader that takes the vertices and expands them into cubes, which are then rasterized and shaded with the vertex color (the same color inserted into the voxel texture).} but is slower than the rasterization-based approach.
+
+\begin{figure}[h!]
+\centering
+    \begin{subfigure}[t]{0.4\textwidth}
+        \includegraphics[width=\textwidth]{results_voxelraster.png}
+        \caption{Rasterized voxels}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[t]{0.4\textwidth}
+        \includegraphics[width=\textwidth]{results_voxeltess.png}
+        \caption{Tesselated voxels}
+    \end{subfigure}
+    \caption{The final rendered image for both voxelization methods have negligable visual differences.}
+    \label{fig:results_voxelization}
+\end{figure}
 
 \begin{table}[H]
 \centering
@@ -63,49 +81,16 @@ Total              & 7.02 & 8.21 & 11.12  & 9.46 & 10.15 & 13.43  & 11.23 & 12.8
 \label{tbl:voxelizationtiming}
 \end{table}
 
+\subsection{Integration of Voxel Cone Tracing into Existing Engines}
+Voxel cone tracing is an attractive method for adding full global illumination to existing engines. The necessary information needed for the algorithm should already be available in most engines. A voxelized representation of the scene can be generated from any arbitrary triangle mesh using either of the voxelization methods presented. Other methods for voxelization could also be used if, for example, some geometry is generated procedurally. For radiance injection the only external inputs required are shadowmaps (or RSMs) for any lights that will contribute to the indirect lighting. Finally, the cone tracing needs surface normals and a TBN matrix (to transform the cone directions to world space), which will already be available for any engine which supports normal mapping.
+
 \subsection{Voxel Warping}
 
-
-\subsection{Integration of Voxel Cone Tracing into Existing Engines}
-
 % atomicMax vs atomicAvg?
-% TODO shadowmap vs RSM, glGenMipmap vs compute
-% TODO screenshots with different voxel resolutions? also with timings for everything?
-
-
-% TODO independent variables for tables? screen resolution, voxel dim, #cones, with/without warping
-% TODO and/or graphs
-
-% TODO "We notice that cone tracing itself is largely independent of voxel grid size. Primarily, voxel grid size affects voxelization the most and mipmapping (transferVoxels???) (the big impact of grid sizes is memory usage). The cone tracing is mostly affected by screen resolution. Possible future work could be tracing at lower resolutions and upsampling or assigning more or less cone tracing based on distance to camera/size in screen space or whatever
-% TODO (intro/contributions?) provide platform for future research on voxelization and cone tracing (and gi in general)
-% TODO should try optimizing a bit with geometry shader + maybe fragment shader
-
-% TODO memory usage
-
 
 \begin{itemize}
-    \item Test setup
-    \begin{itemize}
-        \item hardware used
-        \item scene information (models, textures). multiple scenes would be good\ldots
-        \item render resolution + other settings
-    \end{itemize}
-    \item Screenshots with commentary
-    \begin{itemize}
-        \item voxel textures
-        \item complete scene with and without indirect illumination
-    \end{itemize}
-    \item Timing breakdown for render passes (w/ different settings in table or something)
     \item Evaluation of voxel warping (voxel textures; screenshots with and without; performance penalty; different warping functions?)
-    \item Evaluation of integrating into other engines?
-    \begin{itemize}
-        \item Voxelization only requires a way to draw scene
-        \item Radiance injection needs RSMs
-        \item Shader code could be abstracted to only require position, surface normal (and TBN?)
-    \end{itemize}
 \end{itemize}
 
 % TODO other evaluations: GL_RGBA16F vs GL_RGBA8, comparison of conservative rasterization methods, comparison of filters, different cone weights/angles/directions?
-% table with render pass and total frame time for different voxel resolution, miplevels
 % 2d from above view of voxel warp slope
-% highly variable performance based on unrelated things (OpenGL vs DirectX? modern OpenGL? mipmaps, normal maps, shading model, mesh optimizations, etc)
