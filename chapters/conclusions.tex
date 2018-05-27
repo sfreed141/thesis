@@ -1,20 +1,13 @@
 \chapter{Conclusions}
 
-
-
-\begin{itemize}
-    \item Developed GI solution
-    \item Simple to implement and open source
-    \item Competitive with existing solutions
-    \item Voxel warping helps for larger scenes w/o significant performance/memory penalty
-\end{itemize}
-
-% TODO remember the goal is a competitive, feasible solution
+In this work we implemented a real-time global illumination algorithm based on voxel cone tracing. We experimented with a tesselation-based voxelization method and nonuniform voxelization. Various aspects of our algorithm including performance and visual quality are evaluated and discussed. We find both rasterization-based and tesselation-based voxelization are similar in terms of both performance and voxelization quality. The voxel warping techniques provide promising results for further research. Most importantly, we provide the a simple and cross platform implementation for future work.
 
 \section{Future Work}
 Although voxel warping does help more efficiently use the space within a 3D texture, it can still suffer from wasted space when voxelizing a sparse scene (which leads to wasted GPU memory). An interesting way to solve this could be to utilize sparse textures (provided via the \verb#ARB_sparse_texture# extension for OpenGL). Sparse textures are analogous to classic virtual memory systems: not all parts of the texture are actually allocated in memory. Then, only the parts of the voxel texture that are used would require memory (of course the implementation allocates in fixed-size chunks, similar to pages in virtual memory).
 
-Another potential area of improvement is storing radiance differently. For example, a spherical harmonics representation or ambient dice~\cite{iwanicki2017ambient} representation could be used. This would have impacts on both lighting quality, performance, and memory usage.
+Another potential area of improvement is alternative methods of storing radiance. For example, a spherical harmonics representation or ambient dice~\cite{iwanicki2017ambient} representation could be used. This would have impacts on both lighting quality, performance, and memory usage. In addition, the use of anisotropic methods to reduce light filtering through solid objects could also be added.
+
+An interesting topic to explore in depth would be dynamically adjusting the cone tracing step based on factors such as local geometric surface complexity or distance from the camera. For example, Panteleev discusses computing indirect lighting at a reduced resolution and then interpolating the resulting lighting for smooth surfaces~\cite{practicalvxgi}. Other miscellaneous optimizations for voxel cone tracing could also be pursued, such as only updating subregions of the voxel volume or filtered radiance at a time~\cite{mclaren2016cascaded}.
 
 % Implement the other voxelization and compare
 % \cite{Fei:2012:PV:2305276.2305280} and \cite{eisemann2008single}
