@@ -1,8 +1,8 @@
 \chapter{Results and Discussion}
 
-Here we examine both the performance and visual quality of our global illumination algorithm. The primary means of evaluating performance is based on GPU memory usage and frame time. The times of each contributing render pass are also recorded. Evaluating visual quality is based largely on whether the lighting appears smooth and believable with a minimal amount of noise and artifacts.
+Here we examine both the performance and visual quality of our global illumination algorithm. The primary means of evaluating performance is based on frame time. The times of each render pass are recorded as well as a total frame time. Evaluating visual quality is based largely on whether the lighting appears smooth and believable with a minimal amount of noise and artifacts.
 
-We also discuss the application of voxel warping and how it compares with other global illumination methods. Unfortunately, direct performance and visual quality comparisons are difficult to objectively measure as there are many contributing factors---mesh complexity and optimizations, texture resolution and format, shading model, graphics API, hardware, GPU driver version, etc.---that affect the final comparison, in addition to the exact implementation details. Nevertheless, we provide motivations and tradeoffs between our method and others and their potential impact on performance and quality.
+We also discuss the application of voxel warping and how it compares with other global illumination methods. Unfortunately, direct performance and visual quality comparisons are difficult to objectively measure as there are many contributing factors---mesh complexity and optimizations, texture resolution and format, shading model, graphics API, hardware, GPU driver version, and more---that affect the final comparison, in addition to the exact implementation details. Nevertheless, we provide motivations and tradeoffs between our method and others and their potential impact on performance and quality.
 
 \section{Test Setup}
 % TODO verify driver, kernel, resolution when getting final results
@@ -16,7 +16,7 @@ To measure performance timings for each render pass we make use of OpenGL timer 
 Unless otherwise mentioned, voxel resolutions are 256x256x256 with 6 mipmap levels.
 
 \section{Analysis}
-In the following sections we evaluate various aspects of our work. First, we discuss the global illumination algorithm as a whole. Second, we compare the rasterization-based and tesselation-based voxelization algorithms. Lastly, we provide the results of our voxel warping and some insights on future improvements.
+In the following sections we evaluate various aspects of our work. First, we discuss the global illumination algorithm as a whole. Second, we compare the rasterization-based and tessellation-based voxelization algorithms. Lastly, we provide the results of our voxel warping and some insights on future improvements.
 
 \subsection{Global Illumination}
 Table~\ref{tbl:renderpasstiming} shows timing results from the complete global illumination algorithm. We test the algorithm with different screen resolutions and voxel grid resolutions. Recall that a minimum goal for real-time is 30 frames per second and a target is 60 frames per second, which correspond to individual frame times of 33.3ms and 16.7ms, respectively. We see that the total frame time always meets the goal of 60 frames per second.
@@ -41,14 +41,14 @@ Final Shading      & 3.89 & 4.81 & 5.32  & 5.98 & 6.42 & 7.10  & 8.23 & 9.40 & 9
 Total              & 7.02 & 8.21 & 11.12  & 9.46 & 10.15 & 13.43  & 11.23 & 12.83 & 16.31\\
 \bottomrule
 \end{tabular}
-\caption{Times measured for each render pass for various screen resolutions and voxel grid resolutions. The total timer also accounts for any other operations performed within each frame (i.e.\ the sum of the render pass times is not necessarily the complete time for an entire frame). Voxelization is done using the tesselation-based approach.}
+\caption{Times measured for each render pass for various screen resolutions and voxel grid resolutions. The total timer also accounts for any other operations performed within each frame (i.e.\ the sum of the render pass times is not necessarily the complete time for an entire frame). Voxelization is done using the tessellation-based approach.}
 \label{tbl:renderpasstiming}
 \end{table}
 
-\subsection{Tesselated Voxelization}
-In terms of both performance and visual quality both voxelization methods are very similar. Voxelization times for each method are shown in Table~\ref{tbl:voxelizationtiming}, where we see the tesselation-based voxelization is slightly slower than the rasterization-based approach\footnote{However both implementations were not heavily optimized.}. Figure~\ref{fig:results_voxelization} compares the final rendered scene with both voxelization methods. The differences are minor.
+\subsection{Tessellated Voxelization}
+In terms of both performance and visual quality both voxelization methods are very similar. Voxelization times for each method are shown in Table~\ref{tbl:voxelizationtiming}, where we see the tessellation-based voxelization is slightly slower than the rasterization-based approach\footnote{However both implementations were not heavily optimized.}. Figure~\ref{fig:results_voxelization} compares the final rendered scene with both voxelization methods. The differences are minor.
 
-Ultimately, both voxelization methods are sufficient for real-time global illumination. The (unoptimized) tesselation-based approach is slightly easier to implement and debug\footnote{Since the voxels are written in the tesselation evaluation stage, it is simple to add a geometry shader that takes the vertices and expands them into cubes, which are then rasterized and shaded with the vertex color (the same color inserted into the voxel texture).} but is slower than the rasterization-based approach.
+Ultimately, both voxelization methods are sufficient for real-time global illumination. The (unoptimized) tessellation-based approach is slightly easier to implement and debug\footnote{Since the voxels are written in the tessellation evaluation stage, it is simple to add a geometry shader that takes the vertices and expands them into cubes, which are then rasterized and shaded with the vertex color (the same color inserted into the voxel texture).} but is slower than the rasterization-based approach.
 
 \begin{figure}[h!]
 \centering
@@ -59,7 +59,7 @@ Ultimately, both voxelization methods are sufficient for real-time global illumi
     ~
     \begin{subfigure}[t]{0.4\textwidth}
         \includegraphics[width=\textwidth]{results_voxeltess.png}
-        \caption{Tesselated voxels}
+        \caption{Tessellated voxels}
     \end{subfigure}
     \caption{The final rendered image for both voxelization methods have negligable visual differences.}
     \label{fig:results_voxelization}
@@ -70,7 +70,7 @@ Ultimately, both voxelization methods are sufficient for real-time global illumi
 \begin{tabular}{lcc}
 \toprule
 \multirow{2}{*}{Voxel Grid Size} & \multicolumn{2}{c}{Voxelization Time (ms)} \\
-& Rasterization-Based & Tesselation-Based \\
+& Rasterization-Based & Tessellation-Based \\
 \midrule
 64x64x64        & 0.53 & 0.70\\
 128x128x128     & 0.85 & 1.12\\
@@ -90,13 +90,14 @@ Voxel cone tracing is an attractive method for adding full global illumination t
 
 \begin{itemize}
     \item Evaluation of voxel warping (voxel textures; screenshots with and without; performance penalty; different warping functions?)
+    \item problem with rasterized voxelization (the reason we tried tessellation): adjusting density caused holes and cracks due to how fragments were generated in discrete steps. Tried upping fragment resolution but this is wasteful in terms of computation. Didn't test it but voxelizing in chunks probably wouldn't have been much better due to draw call overhead.
 \end{itemize}
 
 % TODO other evaluations: GL_RGBA16F vs GL_RGBA8, comparison of conservative rasterization methods, comparison of filters, different cone weights/angles/directions?
 % 2d from above view of voxel warp slope
 
 \section{Conclusions}
-In this work we implemented a real-time global illumination algorithm based on voxel cone tracing. We experimented with a tesselation-based voxelization method and nonuniform voxelization. Various aspects of our algorithm including performance and visual quality are evaluated and discussed. We find both rasterization-based and tesselation-based voxelization are similar in terms of both performance and voxelization quality. The voxel warping techniques provide promising results for further research. Most importantly, we provide the a simple and cross platform implementation for future work.
+In this work we implemented a real-time global illumination algorithm based on voxel cone tracing. We experimented with a tessellation-based voxelization method and nonuniform voxelization. Various aspects of our algorithm including performance and visual quality are evaluated and discussed. We find both rasterization-based and tessellation-based voxelization are similar in terms of both performance and voxelization quality. The voxel warping techniques provide promising results for further research. Most importantly, we provide a simple and cross platform implementation for future work.
 
 \section{Future Work}
 Although voxel warping does help more efficiently use the space within a 3D texture, it can still suffer from wasted space when voxelizing a sparse scene (which leads to wasted GPU memory). An interesting way to solve this could be to utilize sparse textures (provided via the \verb#ARB_sparse_texture# extension for OpenGL). Sparse textures are analogous to classic virtual memory systems: not all parts of the texture are actually allocated in memory. Then, only the parts of the voxel texture that are used would require memory (of course the implementation allocates in fixed-size chunks, similar to pages in virtual memory).

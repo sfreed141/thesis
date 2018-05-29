@@ -73,16 +73,16 @@ Some important coordinate systems for computer graphics and this work, some of w
 \subsection{Compute Shaders}
 While most graphics work follows the graphics pipeline, it is possible to use a more abstract model suited towards general purpose computing. Compute shaders provide an interface to performing this GPGPU work (similar to how CUDA exposes GPGPU oepration). At the most basic level, dispatching a compute shader launches many threads that all execute the same program, or kernel, defined in a compute shader. Besides the built-in inputs for determining a thread's location within the compute space, all inputs and outputs are accessed through explicitly defined objects such as textures, images, or buffers.
 
-\subsection{Tesselation}
-An optional stage in the pipeline between vertex shading and geometry shading is tesselation. The goal of tesselation is to take a patch---a fixed number of vertices---and subdivide the patch into more vertices. The number of vertices generated from the subdivision is controlled either from a fixed constant (defined in the application) or from the optional \textbf{tesselation control} shader. The generated vertices are then passed through the \textbf{tesselation evaluation} shader, which performs vertex processing just like the vertex shader.
+\subsection{Tessellation}
+An optional stage in the pipeline between vertex shading and geometry shading is tessellation. The goal of tessellation is to take a patch---a fixed number of vertices---and subdivide the patch into more vertices. The number of vertices generated from the subdivision is controlled either from a fixed constant (defined in the application) or from the optional \textbf{tessellation control} shader. The generated vertices are then passed through the \textbf{tessellation evaluation} shader, which performs vertex processing just like the vertex shader.
 
-A triangular patch (defined by three vertices) is subdivided into multiple subtriangles. There are four total tesselation levels: one which corresponds to the inner tesselation and three for the outer tesselation. Loosely speaking, the inner tesselation determines how many inner triangles are generated and the outer tesselation determines how many vertices are placed along each outer edge. See Figure~\ref{fig:tesselation} for an example.
+A triangular patch (defined by three vertices) is subdivided into multiple subtriangles. There are four total tessellation levels: one which corresponds to the inner tessellation and three for the outer tessellation. Loosely speaking, the inner tessellation determines how many inner triangles are generated and the outer tessellation determines how many vertices are placed along each outer edge. See Figure~\ref{fig:tessellation} for an example.
 
 \begin{figure}[h]
 \centering
-\includegraphics[scale=1.0]{openglwiki_tesselation.png}
-\caption{A triangle tesselated with an inner tesselation level of 5 and outer tesselation levels of 4, 1, and 6. The dashed lines show the new triangles generated from the original triangle. (image from of OpenGL Wiki~\cite{openglwiki_tesselation}).}
-\label{fig:tesselation}
+\includegraphics[scale=1.0]{openglwiki_tessellation.png}
+\caption{A triangle tessellated with an inner tessellation level of 5 and outer tessellation levels of 4, 1, and 6. The dashed lines show the new triangles generated from the original triangle. (image from of OpenGL Wiki~\cite{openglwiki_tessellation}).}
+\label{fig:tessellation}
 \end{figure}
 
 \subsection{Textures and Mipmapping}

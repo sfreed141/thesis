@@ -1,8 +1,8 @@
 Modeling believable lighting is a crucial component of computer graphics applications, including games and modeling programs. Physically accurate lighting is complex and is not currently feasible to compute in real-time situations. Therefore, much research is focused on investigating efficient ways to approximate light behavior within these real-time constraints.
 
-In this thesis, we implement a general purpose algorithm for real-time applications to approximate indirect lighting. Based on voxel cone tracing~\cite{crassin2011interactive}, we use a filtered representation of a scene to efficiently sample ambient light at each point in the scene. We present a novel approach to scene voxelization using hardware tesselation and compare it with an approach utilizing hardware rasterization. We also investigate possible methods of nonuniform voxelization.
+In this thesis, we implement a general purpose algorithm for real-time applications to approximate indirect lighting. Based on voxel cone tracing~\cite{crassin2011interactive}, we use a filtered representation of a scene to efficiently sample ambient light at each point in the scene. We present a novel approach to scene voxelization using hardware tessellation and compare it with an approach utilizing hardware rasterization. We also investigate possible methods of nonuniform voxelization.
 
-Our contributions include a complete and open-source implementation of voxel cone tracing along with both voxelization algorithms. We find similar performance to the raster approach approach but with promising results for perspective warped voxels.
+Our contributions include a complete and open-source implementation of voxel cone tracing along with both voxelization algorithms. We find similar performance and quality with both voxelization algorithms.
 
 %We also extend the base algorithm to better accomodate large scenes by applying a warping function to our filtered representation. This allows us to increase lighting detail near the camera without a significant increase in memory usage or a performance penalty.
 
