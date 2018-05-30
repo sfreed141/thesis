@@ -9,17 +9,6 @@ But triangles have some issues. Primarily, they do a good job of representing su
 \subsection{Voxels}
 Voxels (volume elements) represent 3D objects in a natural way. A volumetric representation of an object is a 3D grid of cells (the voxels) which hold any data relevant to that voxel: color, transparency, and normal, to name a few. Recently, voxels have grown popular in the computer graphics field due to this natural representation of 3D objects. The main reason voxels were not used much in the past is due to the amount of memory required to store a voxelized representation as well as GPUs being specialized for triangle rasterization. This restriction has largely been lifted since modern GPUs have much more memory and general purpose GPU (GPGPU) computing has allowed programmers to work more easily with non-triangle based computing~\cite{Crassin:2009:GRS:1507149.1507152,crassin2012dynamic}.
 
-% TODO? cite Crassin:2009:GRS:1507149.1507152 eisemann2008single
-% could also have this be part of future work: trying out different voxelization techniques
-
-\begin{figure}[h]
-\centering
-\includegraphics[scale=0.5]{bunny_voxel.png}
-\caption{Voxelized representation of a bunny (image from \url{http://cse.iitkgp.ac.in/\textasciitilde pb}).}
-\label{fig:bunnyvoxel}
-\end{figure}
-
-% TODO do i need to cite this stuff? is there a way to blanket statement the knowledge with opengl docs, textbooks, etc.?
 \section{Computer Graphics Primer}
 This thesis has a heavy focus on implementation details and requires a solid foundation in understanding computer graphics. Thus this brief primer will introduce the most important topics including the graphics pipeline, transforms, and some common graphics terminology and techniques. For more information, we encourage Akenine-M{\"o}ller et al.'s Real-Time Rendering~\cite{moller2008rtr} for a complete survey of real-time rendering and the OpenGL and GLSL specifications~\cite{opengl45spec,glsl45spec} for reference.
 
@@ -81,7 +70,7 @@ A triangular patch (defined by three vertices) is subdivided into multiple subtr
 \begin{figure}[h]
 \centering
 \includegraphics[scale=1.0]{openglwiki_tessellation.png}
-\caption{A triangle tessellated with an inner tessellation level of 5 and outer tessellation levels of 4, 1, and 6. The dashed lines show the new triangles generated from the original triangle. (image from of OpenGL Wiki~\cite{openglwiki_tessellation}).}
+\caption{A triangle tessellated with an inner tessellation level of 5 and outer tessellation levels of 4, 1, and 6. The dashed lines show the new triangles generated from the original triangle. (image from OpenGL Wiki~\cite{openglwiki_tessellation}).}
 \label{fig:tessellation}
 \end{figure}
 
@@ -94,7 +83,7 @@ Typically, textures can be considered read-only: they are only sampled from insi
 % TODO move before previous paragraph?
 Mipmapping involves keeping multiple detail levels of the same source data. The base level is the highest resolution available and each successive level is downscaled (typically in powers of two: a texture with a base level resolution of 256x256 would have mipmaps with resolutions of 128x128, 64x64, and so on). While this does require increased memory usage, it can smooth out aliasing issues caused by sampling. Mipmapping also generally increases performance as it improves GPU texture cache locality.
 
-\missingfigure{Mipmapping example}
+% \missingfigure{Mipmapping example}
 
 % TODO section on basic graphics stuff like mipmapping, shadow mapping, normal mapping, transforms?
 
@@ -124,7 +113,7 @@ Another way of representing 3D space can be done using a tree structure. An octr
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.25]{octree.png}
-\caption{Diagram of a simple octree (image from \url{https://en.wikipedia.org/wiki/Octree}).}
+\caption{Diagram of a simple octree (image distributed under \href{https://creativecommons.org/licenses/by-sa/3.0/deed.en}{CC BY-SA 3.0}~\cite{octree}).}
 \label{fig:octree}
 \end{figure}
 
@@ -155,8 +144,8 @@ Although it looks complex, the result $L_o$ is radiance (our final shaded color)
 
 In order to compute a solution to the rendering equation, the problem must first be discretized. Thus the integral will be approximated by a finite sum over the incoming light. Recall that, in general, the incoming light is broken into two parts: direct light and indirect light. To compute the direct light, the contributions from each light source are summed together: this is accomplished with a straightforward loop over each light. The indirect light, however, is more difficult as there are effectively infinite indirect light sources due to light scattering, reflections, and so on. Naturally, this means there is great interest in being able to accurately and efficiently compute indirect lighting. For real-time applications heavy approximations are made and it can be difficult to connect the rendering equation with the resulting approximation. To better illustrate the connection, as well as cover a core technique also adpated for use in real-time applications, raytracing is helpful to understand.
 
-\missingfigure{Diagram of radiance equation, possibly BRDF too}
-\missingfigure{Raytracing, raymarching?}
+% \missingfigure{Diagram of radiance equation, possibly BRDF too}
+% \missingfigure{Raytracing, raymarching?}
 
 \section{Raytracing}
 Raytracing is a common alternative to rasterization and is a natural way of calculating light. The idea is for each pixel of our final rendered image we cast a ray from the camera into our scene. If the ray hits an object the object's material and the light sources in the scene can be used to calculate a color value. Using this model it is simple to extend the basic shading model to support shadows, reflections, and refractions.

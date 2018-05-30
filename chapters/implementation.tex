@@ -18,7 +18,7 @@ The goal of voxelization is to create a sparse 3D representation of the geometry
 
 The extents of our voxelization volume---the area in world space that will end up inside the voxel textures---is also configurable and by default is set to enclose the entire scene. This volume can be static or can track the camera (with the camera being at the center of the textures). In addition, to prevent some issues with temporal artifacts, the voxel textures are snapped to a discrete grid corresponding to the size of each voxel cell in world space.
 
-We present two different approaches for scene voxelization: one utilizing hardware rasterization and the other hardware tesselation.
+We present two different approaches for scene voxelization: one utilizing hardware rasterization and the other hardware tessellation.
 
 \subsection{Rasterization-Based Approach to Voxelization}
 % TODO scene extents, midpoint and tracking, computing voxel texture coordinates, choosing axis, diagram of scene extents and converting to NDC
@@ -36,8 +36,8 @@ For the shader program, the voxel textures are bound as \texttt{image3D} objects
     \label{alg:voxelization}
     \begin{algorithmic}
         \For {each triangle $t$}
-        \State {$axis = \mathrm{computeDominantAxis}(t_{normal})$}
-        \State {$projectedPosition = P_{axis} * worldPosition$}
+        \State {find dominant axis of $t$ using surface normal}
+        \State {apply projection matrix corresponding to the dominant axis}
         \EndFor
         \State{Rasterization}\Comment {Performed by hardware}
         \For {each rasterized fragment} \Comment {position is in NDC}
@@ -45,7 +45,6 @@ For the shader program, the voxel textures are bound as \texttt{image3D} objects
         \State {Realign NDC coordinates with standard coordinate system}
         \State {Insert fragment into voxel texture}
         \EndFor
-
     \end{algorithmic}
 \end{algorithm}
 
@@ -65,7 +64,14 @@ However there is still one more issue: multiple voxel fragments can be mapped to
 % TODO need to work this in better. subsection?
 % TODO should expand on problem more
 \subsubsection{Conservative Rasterization}
-As mentioned previously, we need conservative rasterization to minimize holes and cracks in the voxelization. To achieve this, we use an MSAA based approach~\cite{takeshige2015basics}. MSAA (multi-sample anti-aliasing) is a technique used for smoothing out ragged edges (aliasing) in a rasterized image. Instead of only sampling at one position inside a pixel to determine if a fragment should be generated multiple samples are used (hence the name). These samples are typically distributed to maximize the possibility of a rasterized fragment being produced. If any of the samples overlap with the triangle a fragment is generated for that pixel. Applied to voxelization, this means there is a smaller chance that a triangle will fail to produce a fragment for any voxel it only partially occupies. While the MSAA method of conservative rasterization is not perfect (a partially occupied voxel won't always produce a fragment), it is cross-platform, simple to use, and efficient. Other notable methods would be manually dilating each triangle in a geometry shader (better quality but slower)~\cite{akenine2005conservative} or using a GPU vendor specific extension, like \verb#GL_NV_conservative_raster# (better quality but not cross-platform). A comparison between no conservative rasterization, MSAA-based conservative rasterization, and the NVIDIA extension is shown in Figure~\ref{fig:conservativerasterization}\footnote{Also note the erroneous fragments generated when using the NVIDIA extension. These extra fragments are produced by some methods of (overly) conservative rasterization and relies on the user to manually cull these fragments).}.
+As mentioned previously, we need conservative rasterization to minimize holes and cracks in the voxelization. To achieve this, we use an MSAA based approach~\cite{takeshige2015basics}. MSAA (multi-sample anti-aliasing) is a technique used for smoothing out ragged edges (aliasing) in a rasterized image. Instead of only sampling at one position inside a pixel to determine if a fragment should be generated multiple samples are used (hence the name). These samples are typically distributed to maximize the possibility of a rasterized fragment being produced. If any of the samples overlap with the triangle a fragment is generated for that pixel. An illustration of MSAA is shown in Figure~\ref{fig:msaa}. Applied to voxelization, this means there is a smaller chance that a triangle will fail to produce a fragment for any voxel it only partially occupies. While the MSAA method of conservative rasterization is not perfect (a partially occupied voxel won't always produce a fragment), it is cross-platform, simple to use, and efficient. Other notable methods would be manually dilating each triangle in a geometry shader (better quality but slower)~\cite{akenine2005conservative} or using a GPU vendor specific extension, like \verb#GL_NV_conservative_raster# (better quality but not cross-platform). A comparison between no conservative rasterization, MSAA-based conservative rasterization, and the NVIDIA extension is shown in Figure~\ref{fig:conservativerasterization}\footnote{Also note the erroneous fragments generated when using the NVIDIA extension. These extra fragments are produced by some methods of (overly) conservative rasterization and relies on the user to manually cull these fragments.}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{rtr_fig5_28.png}
+    \caption{With MSAA, multiple points within a pixel are used to determine whether a fragment should be generated~\cite{moller2008rtr}.}
+    \label{fig:msaa}
+\end{figure}
 
 % TODO should implement the geometry shader based and then compare performance quality of all 3 (might need to do that indirect rendering thing too...)
 
@@ -89,27 +95,27 @@ As mentioned previously, we need conservative rasterization to minimize holes an
     \label{fig:conservativerasterization}
 \end{figure}
 
-\subsection{Tesselation-Based Approach to Voxelization}
-The other method for voxelization relies completely on hardware tesselation: no rasterization required. Instead of generating fragments for each voxel we instead attempt to generate vertices for each voxel. One benefit of this method is the mapping from vertex to voxel position is fairly straightforward and does not require multiple projection matrices like in the rasterization-based approach. Fei et al.~\cite{Fei:2012:PV:2305276.2305280} also developed an algorithm similar to ours using tesselation.
+\subsection{Tessellation-Based Approach to Voxelization}
+The other method for voxelization relies completely on hardware tessellation: no rasterization required. Instead of generating fragments for each voxel we instead attempt to generate vertices for each voxel. One benefit of this method is the mapping from vertex to voxel position is fairly straightforward and does not require multiple projection matrices like in the rasterization-based approach. Fei et al.~\cite{Fei:2012:PV:2305276.2305280} also developed an algorithm similar to ours using tessellation.
 
-The core part of this approach is determining the appropriate tesselation level for a given triangle. Recall that this step is the responsibility of the tesselation control shader. Afterwards, tesselation primitive generation produces the tesselated vertices and provides them to the tesselation evaluation shader, where we compute each vertex's position in the voxel texture and store the vertex's color. The final voxelized scene is shown in Figure~\ref{fig:tesselatedvoxels}.
+The core part of this approach is determining the appropriate tessellation level for a given triangle. Recall that this step is the responsibility of the tessellation control shader. Afterwards, tessellation primitive generation produces the tesselated vertices and provides them to the tessellation evaluation shader, where we compute each vertex's position in the voxel texture and store the vertex's color. The final voxelized scene is shown in Figure~\ref{fig:tesselatedvoxels}.
 
-% TODO determining tesselation level and discarding
-The desired level of tesselation will produce one vertex for each voxel the triangle covers. Therefore, for a particular triangle, the tesselation level is determined based on the triangle's size in world space. Recall that for triangular tesselation patches there are four values: three outer tesselation levels (one for each edge) and one inner tesselation level. To determine the outer tesselation level for an edge $E$, we effectively determine how many voxels $E$ passes through (accounting for the direction of $E$): $\displaystyle outerLevel = \frac{|E|}{(\frac{E}{||E||} \cdot voxelSize)}$. To determine the inner tesselation level, we find the maximum altitude of the triangle and then perform a similar computation as with the outer level. With $a$, $b$, and $c$ being the lengths of the triangle edges, the altitude from a side $x \in \{a, b, c\}$ is given by
+% TODO determining tessellation level and discarding
+The desired level of tessellation will produce one vertex for each voxel the triangle covers. Therefore, for a particular triangle, the tessellation level is determined based on the triangle's size in world space. Recall that for triangular tessellation patches there are four values: three outer tessellation levels (one for each edge) and one inner tessellation level. To determine the outer tessellation level for an edge $E$, we effectively determine how many voxels $E$ passes through (accounting for the direction of $E$): $\displaystyle outerLevel = \frac{|E|}{(\frac{E}{||E||} \cdot voxelSize)}$. To determine the inner tessellation level, we find the maximum altitude of the triangle and then perform a similar computation as with the outer level. With $a$, $b$, and $c$ being the lengths of the triangle edges, the altitude from a side $x \in \{a, b, c\}$ is given by
 \[
     h_x = \frac{2 \sqrt{s(s-a)(s-b)(s-c)}}{x}
 \]
 where $s = (a + b + c) / 2$ is the semiperimeter and the square root term is the triangle's area using Heron's Formula. The maximum altitude is then $h_{max} = \max(h_a, h_b, h_c)$. Finally, we have $innerLevel = h_{max} / voxelSize$. % TODO should find direction of h_max and do dot product like outer levels
 
 % TODO calculating coordinates and inserting
-After specifying the tesselation levels in the tesselation control shader, tesselation primitive generation produces the vertices that correspond to the voxels. In the tesselation evaluation shader the vertex position (in world space) is used to determine the final voxel position and is written out to the voxel texture.
+After specifying the tessellation levels in the tessellation control shader, tessellation primitive generation produces the vertices that correspond to the voxels. In the tessellation evaluation shader the vertex position (in world space) is used to determine the final voxel position and is written out to the voxel texture.
 
-An important consideration for this method is the maximum tesselation level supported by the hardware. For large triangles it is possible the tesselation will not produce a solid voxelization. A simple way to address this issue is to break large triangles into smaller ones when loading the mesh. Another consideration is for small triangles where all vertices occupy a single voxel. To reduce the number of writes to the voxel texture the contributions of these vertices can be consolidated in the shader into a single operation.
+An important consideration for this method is the maximum tessellation level supported by the hardware. For large triangles it is possible the tessellation will not produce a solid voxelization. A simple way to address this issue is to break large triangles into smaller ones when loading the mesh. Another consideration is for small triangles where all vertices occupy a single voxel. To reduce the number of writes to the voxel texture the contributions of these vertices can be consolidated in the shader into a single operation.
 
 \begin{figure}[h!]
 \centering
     \includegraphics[width=\textwidth]{voxels_tesselated.png}
-    \caption{Scene voxelized using tesselation-based voxelization.}
+    \caption{Scene voxelized using tessellation-based voxelization.}
     \label{fig:tesselatedvoxels}
 \end{figure}
 
@@ -200,7 +206,7 @@ The other benefit to manually filtering is different methods can be used. For ex
         \includegraphics[width=\textwidth]{mipmap3.png}
         \caption{Level 3}
     \end{subfigure}
-    \caption{The first 4 levels of the radiance texture are shown here (using \texttt{GL\_NEAREST\_MIPMAP\_NEAREST} filtering).}
+    \caption{The first 4 levels of the radiance texture are shown here (using \texttt{GL\_NEAREST\_MIPMAP\_NEAREST} filtering for demonstration purposes).}
     \label{fig:radiancefiltered}
 \end{figure}
 
@@ -246,7 +252,7 @@ Two important inputs for the fragment shader are material information and light 
     \end{algorithmic}
 \end{algorithm}
 
-\missingfigure{Final rendered image with each individual contribution (direct+ diffuse indirect + specular indirect)}
+% \missingfigure{Final rendered image with each individual contribution (direct+ diffuse indirect + specular indirect)}
 
 \subsection{Direct Lighting}
 We calculate direct lighting by iterating over each light source in the scene and summing all lighting contributions. We compute diffuse and specular lighting according to the Cook-Torrance shading model (without the ambient term, which is computed by the voxel cone tracing):
@@ -279,11 +285,11 @@ For the diffuse cones we chose an aperture of $45^\circ$ with one cone oriented 
 % TODO make sure to define these somewhere
 The specular cone is oriented in the direction of the reflection vector, which is calculated as $-\bm{v} - 2 * (\bm{n} \cdot -\bm{v}) * \bm{n}$, or by using the GLSL function \texttt{reflect()}. The aperture is derived from the material's roughness according to the following formula\footnote{Determined experimentally.}: $0.1 * \pi * roughness$.
 
-\missingfigure{Show hemisphere with the cones used}
+% \missingfigure{Show hemisphere with the cones used}
 
 % TODO place this somewhere...
 % TODO  add math n shit yo
-The radiance texture is sampled at varying levels of detail in order to approximate the amount of indirect light at that point. At it's core, voxel cone tracing is raymarching through a mipmapped texture. In order to determine which miplevel to sample from, the idea of cone tracing is introduced. Instead of having a simple ray, we imagine a cone with a particular aperture (angle). Then, the height of the cone is analagous to a ray's length and the size (diameter) of the cone's base grows as the height increases. We can then map the diameter to a level of detail.
+The radiance texture is sampled at varying levels of detail in order to approximate the amount of indirect light at that point. At it's core, voxel cone tracing is raymarching through a mipmapped texture. In order to determine which miplevel to sample from, the idea of cone tracing is introduced. Instead of having a simple ray, we imagine a cone with a particular aperture (angle). The cone's height is analagous to a ray's length and the size (diameter) of the cone's base grows as the height increases. We can then map the diameter to a level of detail.
 
 Combining this all together, we sample from the radiance texture at a level of detail related to the height of the cone at our sampling point. In this way, samples close to the start of the cone come from higher detailed data and samples far from the start come from lower detailed data. This allows the voxel cone tracing to gather both high frequency and low frequency details of the indirect light.
 
@@ -355,16 +361,29 @@ Previously, voxel positions were determined linearly from their position inside 
 Recall from voxelization that in order to determine the location in the voxel texture for a given fragment we perform a linear mapping from world space to image space. As an intermediate step, we have the voxel position in texture space (in the range $[0, 1]$). Thus, for example, if the position along the $y$ axis is 0 it will go into the bottom of the voxel texture and if 1 will go into the top part of the voxel texture. Now, consider mapping the coordinate in texture space to so-called warp space, which is also in the range $[0, 1]$. Without any modifications, this is a straight line with a slope of 1, representing a linear `warping' function. If we let $w_{linear}: [0, 1] \rightarrow [0, 1]$ be the warping function and $x \in [0, 1]$ be the coordinate in texture space then we have $w_{linear}(x) = x$. Of course, this warping function does not do anything useful. For that, we need a different, nonlinear, warping function.
 
 \subsubsection{Nonlinear Warping}
-Consider the function $w_{logistic}(x) = \frac{1}{1 + e^{-x}}$ (this is basic logistic function, a type of ``S''-shaped curve). Notice how towards the edges the slope decreases and in the middle the slope is greater than one. If we draw lines up and over from the curve for $x = 0.4$ and $x = 0.6$ we see that the range of $w_{logistic}(x)$ is greater than that of $w_{linear}(x)$. In other words, the positions within those particular $x$ values `take up more space' in the voxel texture. Likewise, towards the ends, the slope decreases towards zero and thus takes up less space. This achieves the goal of varying the voxel density resolution according to a simple function. We also see that the slope, $w'(x)$, represents the voxel density: if $w'(x) = 1$, the density is the same as the linear mapping; if $w'(x) > 1$, the density is greater than the linear mapping; if $w'(x) < 1$, the density is less than the linear mapping.
+Consider the function $w_{logistic}(x) = \frac{1}{1 + e^{-x}}$ (a basic logistic function, a type of ``S''-shaped curve). Notice how as $x$ approaches 0 or 1 the slope decreases and in the middle the slope is greater than one. If we draw lines up and over from the curve for $x = 0.4$ and $x = 0.6$ we see that the range of $w_{logistic}(x)$ is greater than that of $w_{linear}(x)$. In other words, the positions within those particular $x$ values `take up more space' in the voxel texture. Likewise, towards the ends, the slope decreases towards zero and thus takes up less space. This achieves the goal of varying the voxel density resolution according to a simple function. We also see that the slope, $w'(x)$, represents the voxel density: if $w'(x) = 1$, the density is the same as the linear mapping; if $w'(x) > 1$, the density is greater than the linear mapping; if $w'(x) < 1$, the density is less than the linear mapping.
 % TODO lots of pictures, show  functions and lines; start off with cubic instead?
 
-The ideal warping function increases voxel density near the camera and decreases voxel density further away. The logistic function provided does this, however there are some issues. Recall from the Voxelization section that the scene is rendered with a viewport of dimensions equal to that of the voxel texture. The discretized fragment positions will therefore all be in step sizes corresponding to this viewport resolution. When the warp function is applied where $w'(x) > 1$, we can run into issues where adjacent fragments will `skip' a position in the voxel texture. In essence, the voxel fragments are not generated with fine enough resolution to smoothly transition after being warped \footnote{This is similar to the concept of the Nyquist Frequency, where we are not sampling the signal at a high enough rate}. To resolve this, the scene must be voxelized with a viewport resolution scaled by the maximum derivative of $w(x)$. In design terms, this means choosing a warping function with a steep slope will result in needing to voxelize the scene with a larger viewport resolution, which can hurt performance. % TODO show cracks and the heatmap
+The ideal warping function increases voxel density near the camera and decreases voxel density further away. The logistic function provided does this\footnote{The camera is at the center of the voxel grid, so it corresponds to $x = 0.5$ in the warping function.}, however there are some issues. Recall from the Voxelization section that the scene is rendered with a viewport of dimensions equal to that of the voxel texture. The discretized fragment positions will therefore all be in step sizes corresponding to this viewport resolution. When the warp function is applied where $w'(x) > 1$, we can run into issues where adjacent fragments will `skip' a position in the voxel texture. In essence, the voxel fragments are not generated with fine enough resolution to smoothly transition after being warped \footnote{This is similar to the concept of the Nyquist Frequency, where we are not sampling the signal at a high enough rate}. To resolve this, the scene must be voxelized with a viewport resolution scaled by the maximum derivative of $w(x)$. In design terms, this means choosing a warping function with a steep slope will result in needing to voxelize the scene with a larger viewport resolution, which can hurt performance. Figure~\ref{fig:voxelcracks} demonstrates this issue.
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[t]{\textwidth}
+        \includegraphics[width=\textwidth]{voxelwarp_cracks.png}
+    \end{subfigure}
+    \begin{subfigure}[t]{\textwidth}
+        \includegraphics[width=\textwidth]{voxelwarp_nocracks.png}
+    \end{subfigure}
+    \caption{Cracks in the voxels caused by higher voxel density (left) and filling the holes by voxelizing with a higher resolution (right).}
+    \label{fig:voxelcracks}
+\end{figure}
 
 Using the logistic function as the warping function also has another issue: the slope at the ends approaches zero. This leads to a large portion of the voxelized region ending up in relatively few voxels, which diminishes the accuracy of the voxelization greatly. % TODO show this
 Instead, we want to place a lower bound on $w'(x)$. The solution to this is to use a cubic spline, i.e.\ $w(x) = a + bx + cx^2 + dx^3$. Then, with $\alpha$ as the desired end slope, we use the constraints $w(0) = 0, w(1) = 1, \text{ and } w'(0) = w'(1) = \alpha$ and solve for the variables $a$, $b$, $c$, and $d$. This gives the warping function: $w(x) = \alpha x + (3 - 3 \alpha) x^2 + (2 \alpha - 2) x^3$. For our implementation, $\alpha = 0.25$.
 
 % TODO imply that 0.5 is close to camera? idk
 % TODO go over how this doesnt mess up voxel cone tracing or filtering and stuff
+% TODO horner's method?
 
 % \subsection{Warp Textures}  % TODO ???
 
@@ -372,8 +391,6 @@ Instead, we want to place a lower bound on $w'(x)$. The solution to this is to u
 The other method of warping implemented is based on perspective projection. Recall that when transforming coordinates from view space to clip space we use a projection matrix. To emulate the visual effect of distant objects appearing smaller, a perspective projection matrix applies a scaling factor to any transformed position coordinate. This scaling effectively causes distant objects to occupy less area in screen space of the final rendered image. Similarly, for our perspective warping, we use a perspective matrix to manipulate the final voxel position.
 
 To determine the voxel position from a position in world space, we apply both a perspective projection and view matrix. This results in a point in NDC corresponding to its position within the view frustum\footnote{We also must linearize the depth (z) component of the position, as a perspective projection causes the depth to be logarithmic.}. This value is then shifted and scaled to be in texture space, which is the voxel position.
-
-% TODO expand on this and show code
 
 % TODO do i need this?
 \section{Miscellaneous}
@@ -384,7 +401,8 @@ With voxel cone tracing, each fragment shader invocation is quite expensive. If 
 % \subsection{Compressed Textures with Pregenerated Mipmaps}
 % TODO ?
 
-% \subsection{Temporal Filtering}     % TODO ???
+\subsection{Temporal Filtering}     % TODO ???
+Typically the radiance texture is cleared completely at the beginning of each frame. Due to the discrete nature of the voxel grid, moving objects and lights can cause temporal artifacts (flickering) as the voxels are updated. These artifacts can be improved by incorporating previous radiance values into the current frame's radiance. To do this, we can blend some factor of a voxel's previous radiance value with its new value\footnote{This factor is configurable at runtime.}.
 
 % \subsection{Voxel Hole Filling}     % TODO ??? (radianceDilate,voxelizeDilate,voxelFillHoles)
 
