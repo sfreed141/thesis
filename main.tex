@@ -28,6 +28,8 @@
 \usepackage{ifthen}
 \usepackage{lmodern,microtype,enumitem,todonotes,booktabs,multirow,subcaption}
 % \usepackage{minted}
+\usepackage[export]{adjustbox}
+\usepackage{pgfplots}
 
 \lstdefinestyle{default}{
   basicstyle=\footnotesize\ttfamily,
@@ -38,6 +40,8 @@
   frame=single
 }
 \lstset{style=default}
+\renewcommand*{\lstlistingname}{LIST OF LISTINGS}
+\renewcommand*{\lstlistlistingname}{LIST OF LISTINGS}
 
 \graphicspath{ {figures/} }
 
@@ -116,6 +120,9 @@
 \listoffigures
 
 \lstlistoflistings
+
+\addcontentsline{toc}{chapter}{LIST OF LISTINGS}
+\addtocontents{lol}{Listing \hfill Page}
 
 % Add CHAPTER into table of contents.
 \addtocontents{toc}{%
