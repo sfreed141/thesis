@@ -235,23 +235,3 @@ The second method of voxelization utilizes perspective projection to determine t
     \caption{The perspective voxel warping has a noticeable effect on lighting quality.}
     \label{fig:results_tesswarp}
 \end{figure}
-
-% atomicMax vs atomicAvg?
-% warp textures? motivation was to not rely on camera for detail but base it on scene geometry. problem is finding good weights and moving objects causing those weights to change
-
-% TODO other evaluations: GL_RGBA16F vs GL_RGBA8, comparison of conservative rasterization methods, comparison of filters, different cone weights/angles/directions?
-% 2d from above view of voxel warp slope
-
-\section{Conclusions}
-In this work we implemented a real-time global illumination algorithm based on voxel cone tracing. We experimented with a tessellation-based voxelization method and nonuniform voxelization. Various aspects of our algorithm, including performance and visual quality, are evaluated and discussed. We find both rasterization-based and tessellation-based voxelization are similar in terms of both performance and voxelization quality. The voxel warping techniques provide promising results for further research. Most importantly, we provide a simple and cross platform implementation for future work.
-
-\section{Future Work}
-The goal of voxel warping was to increase voxel density for more detailed lighting as well as more efficiently use space within a 3D texture (and without the complexities of a sparse voxel octree). Unfortunately, having continuous voxel sizes makes minimizing temporal flickering difficult. To achieve the same goals while still having fixed voxel sizes, an approach to storing the voxels based on cascaded sparse 3D textures seems promising. Sparse textures (provided via the \verb#ARB_sparse_texture# extension for OpenGL) are analogous to classic virtual memory systems: not all parts of the texture are actually allocated in memory. Only the parts of the voxel texture that are used would require memory (of course the implementation allocates in fixed-sized chunks, similar to pages in virtual memory). This approach would (ideally) combine the adaptive storage of octrees with the adaptive detail and hardware texture filtering of cascaded 3D textures.
-
-For continued work on perspective voxel warping, exploring how to reduce temporal flickering would be worthwhile. Currently, voxels are aligned perpendicularly to the camera (a result of the view frustum having perpendicular near and far planes). Instead, curving the voxels may help reduce flickering when rotating the camera since the boundaries between adjacent voxels would be smooth. Essentially, the voxels would be described using spherical coordinates instead of cartesian coordinates.
-
-Tessellated voxelization may lend itself well to a single-pass multi-resolution voxelization. Consider voxelizing a scene when using a cascaded 3D texture. With rasterization-based voxelization, the fragment resolution must be set to the maximum density required (for a single pass approach). This is wasteful for all areas of the texture where that high density isn't required. A multi-pass approach could be used instead, but this introduces overhead based on how many passes are needed. With tessellation-based voxelization, the density is configured dynamically in the tessellation control shader, and thus a multi-resolution voxelization should be achievable in a single pass without `over-voxelizing' the lower resolution parts of the scene.
-
-Another potential area of improvement is using alternative methods for storing radiance. For example, a spherical harmonics representation or ambient dice~\cite{iwanicki2017ambient} representation could be used. This would have impacts on both lighting quality, performance, and memory usage. In addition, the use of anisotropic methods to reduce light filtering through solid objects could also be added.
-
-An interesting topic to explore in depth would be dynamically adjusting the cone tracing step based on factors such as local geometric surface complexity or distance from the camera. For example, Panteleev discusses computing indirect lighting at a reduced resolution and then interpolating the resulting lighting for smooth surfaces~\cite{practicalvxgi}. Interpolation was also used for RSMs to reduce the amount of computation~\cite{Dachsbacher:2005:RSM:1053427.1053460}. Other miscellaneous optimizations for voxel cone tracing could also be pursued, such as only updating subregions of the voxel volume or filtered radiance at a time~\cite{mclaren2016cascaded}.
